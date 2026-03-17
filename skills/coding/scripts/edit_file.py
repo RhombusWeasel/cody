@@ -16,15 +16,19 @@ def main():
   
   content = read_file_contents(args.path)
   
-  if args.old_text not in content:
+  # Decode literal \n and \t from CLI args (agent often passes escaped strings)
+  old_text = args.old_text.replace('\\n', '\n').replace('\\t', '\t')
+  new_text = args.new_text.replace('\\n', '\n').replace('\\t', '\t')
+  
+  if old_text not in content:
     print(f"Error: The exact text to replace was not found in '{args.path}'.")
     sys.exit(1)
     
-  if content.count(args.old_text) > 1:
+  if content.count(old_text) > 1:
     print(f"Error: The text to replace appears multiple times in '{args.path}'. Please provide a more specific text block.")
     sys.exit(1)
   
-  new_content = content.replace(args.old_text, args.new_text)
+  new_content = content.replace(old_text, new_text)
   write_file_contents(args.path, new_content)
   print(f"File '{args.path}' updated successfully.")
 

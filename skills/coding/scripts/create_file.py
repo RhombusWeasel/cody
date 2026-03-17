@@ -17,7 +17,9 @@ def main():
   # Ensure directory exists
   os.makedirs(os.path.dirname(args.path), exist_ok=True)
   
-  content = ensure_indentation(args.content)
+  # Decode literal \n and \t from CLI arg (agent often passes escaped strings)
+  content = args.content.replace('\\n', '\n').replace('\\t', '\t')
+  content = ensure_indentation(content)
   write_file_contents(args.path, content)
   print(f"File '{args.path}' created successfully.")
 
