@@ -5,12 +5,8 @@ A TUI (terminal user interface) AI coding assistant built with [Textual](https:/
 ## Features
 
 ### Chat
-- Multi-tab chat with persistent history (SQLite)
-- Ollama and OpenAI provider support
-- Tool-calling for skills and system commands
-- Send terminal output to chat for context
-- Slash commands (e.g. `/help`, `/clear`) with autocomplete
-- Input history
+- Multi-tab chat with customizable tooling.
+- Slash commands (e.g. `/help`, `/clear`) with autocomplete; project-specific commands from `{project}/.agents/commands/`
 
 ### Sidebar
 - **Chat history** – Browse and restore past conversations
@@ -40,6 +36,47 @@ A TUI (terminal user interface) AI coding assistant built with [Textual](https:/
 ### Config
 - JSON config: `~/.agents/cody_settings.json` (global) + `{project}/.agents/cody_config.json` (local)
 - Provider/model selection, API keys, prompts, skill directories
+
+## Customized Tooling
+
+Both **skills** and **slash commands** use tiered loading: later directories override earlier ones for the same name.
+
+| Layer | Skills | Commands |
+|-------|--------|----------|
+| Built-in | `$CODY_DIR/skills/` | `$CODY_DIR/components/chat/cmd/` |
+| Cody-level | — | `$CODY_DIR/cmd/` |
+| User global | `~/.agents/skills/` | `~/.agents/commands/` |
+| Project | `{project}/.agents/skills/` | `{project}/.agents/commands/` |
+
+Configure paths via `skills.directories` and `commands.directories` in config.
+
+### Example: custom slash command
+
+Create `my_project/.agents/commands/echo.py`:
+
+```python
+from utils.cmd_loader import CommandBase
+
+class EchoCommand(CommandBase):
+    description = "Echoes the given text as a system message"
+
+    async def execute(self, app, args: list[str]):
+        try:
+            from components.chat.chat import MsgBox
+            from textual.widgets import TabbedContent
+
+            text = " ".join(args) if args else "(nothing)"
+            tabs = app.query_one("#chat_tabs", TabbedContent)
+            if not tabs.active:
+                return
+            pane = tabs.get_pane(tabs.active)
+            msg_box = pane.query_one(MsgBox)
+            msg_box.messages = [*msg_box.messages, {"role": "system", "content": text}]
+        except Exception as e:
+            print(f"Echo command failed: {e}")
+```
+
+Use `/echo hello world` in chat. One `CommandBase` subclass per file; filename becomes the command name.
 
 ## Requirements
 
@@ -89,4 +126,4 @@ cody/
 ├── skills/              # Bundled skills (e.g. coding)
 ├── utils/               # Agent, config, providers, db, git, etc.
 └── config.json_example  # Config template
-``
+```
