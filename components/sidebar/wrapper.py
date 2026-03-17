@@ -1,5 +1,5 @@
 from textual.containers import VerticalScroll
-from textual.widgets import Label, TabbedContent, TabPane
+from textual.widgets import TabbedContent, TabPane
 
 from components.sidebar.tool_list import ToolList
 from components.sidebar.settings import SettingsMenu
@@ -35,6 +35,15 @@ TabbedContent ContentSwitcher {
 }
 """
 
+TAB_TOOLTIPS = {
+  "tab-chats": "Chat History",
+  "tab-fs": "File System",
+  "tab-git": "Git",
+  "tab-tools": "Skills",
+  "tab-db": "DB Connections",
+  "tab-settings": "Settings",
+}
+
 class Sidebar(VerticalScroll):
     
     DEFAULT_CSS = CSS
@@ -55,8 +64,21 @@ class Sidebar(VerticalScroll):
                 yield ToolList()
             with TabPane(icons.DB, id="tab-db", classes="tabbed-content-label"):
                 yield DBSidebarTab()
-            for tab_id, label, factory in discover_sidebar_tabs():
+            for tab_id, label, factory, tooltip in discover_sidebar_tabs():
                 with TabPane(label, id=tab_id, classes="tabbed-content-label"):
                     yield factory()
             with TabPane(icons.SETTINGS, id="tab-settings", classes="tabbed-content-label"):
                 yield SettingsMenu()
+
+    def on_mount(self):
+        tooltips = dict(TAB_TOOLTIPS)
+        for tab_id, _, _, tooltip in discover_sidebar_tabs():
+            tooltips[tab_id] = tooltip
+        tabs = self.query_one(TabbedContent)
+        for pane in tabs.query(TabPane):
+            tab_id = pane.id
+            if tab_id and (tip := tooltips.get(tab_id)):
+                try:
+                    tabs.get_tab(tab_id).tooltip = tip
+                except ValueError:
+                    pass

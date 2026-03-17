@@ -7,7 +7,7 @@ from textual.widgets import Button
 from components.tree import GenericTree
 from utils.tree_model import TreeEntry
 from utils.db import db_manager
-from utils.icons import DATABASE, FOLDER, FILE, DELETE, REFRESH
+from utils.icons import DB_ICON_SET, DELETE, REFRESH
 
 
 ROOT_ID = "root"
@@ -17,8 +17,8 @@ CATEGORIES = ["table", "view", "trigger"]
 class DBTree(GenericTree):
   """Tree of database connections with Tables/Views/Triggers."""
 
-  def __init__(self, on_select: Callable[[str], None] | None = None, **kwargs):
-    super().__init__(**kwargs)
+  def __init__(self, on_select: Callable[[str], None] | None = None, icon_set: dict | None = None, **kwargs):
+    super().__init__(root_node_id=ROOT_ID, icon_set=icon_set or DB_ICON_SET, **kwargs)
     self._on_select_callback = on_select
     self._child_cache: dict[tuple[str, str], list[str]] = {}
 
@@ -32,7 +32,7 @@ class DBTree(GenericTree):
       is_expandable=True,
       is_expanded=ROOT_ID in self._expanded,
       display_name="Databases",
-      icon=DATABASE,
+      icon=self.icon("database"),
     ))
 
     conn_paths = list(db_manager.connections.keys())
@@ -45,7 +45,7 @@ class DBTree(GenericTree):
         is_expandable=True,
         is_expanded=path in self._expanded,
         display_name=os.path.basename(path),
-        icon=DATABASE,
+        icon=self.icon("database"),
       ))
 
       if path in self._expanded:
@@ -60,7 +60,7 @@ class DBTree(GenericTree):
             is_expandable=True,
             is_expanded=cat_id in self._expanded,
             display_name=cat.title() + "s",
-            icon=FOLDER,
+            icon=self.icon("folder"),
           ))
 
           if cat_id in self._expanded:
@@ -70,13 +70,14 @@ class DBTree(GenericTree):
               is_last_item = k == len(names) - 1
               item_branch = self.LAST_BRANCH if is_last_item else self.BRANCH
               item_id = (path, cat, name)
+              cat_icon = self.icon(cat) if cat in ("table", "view", "trigger") else self.icon("file")
               result.append(TreeEntry(
                 node_id=item_id,
                 indent=ext + cat_ext + item_branch,
                 is_expandable=False,
                 is_expanded=False,
                 display_name=name,
-                icon=FILE,
+                icon=cat_icon,
               ))
 
     return result
@@ -106,8 +107,6 @@ class DBTree(GenericTree):
         self._child_cache[node_id] = [f"Error: {e}"]
 
   def on_node_toggled(self, node_id: Any) -> None:
-    if node_id == ROOT_ID:
-      return
     super().on_node_toggled(node_id)
     path = node_id if isinstance(node_id, str) else (node_id[0] if isinstance(node_id, tuple) else None)
     if path and self._on_select_callback:

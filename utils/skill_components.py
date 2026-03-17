@@ -17,7 +17,8 @@ def _get_widget_factory(module):
 def discover_sidebar_tabs():
   """
   Scans enabled skills for components/sidebar_tab.py.
-  Returns list of (tab_id, label, widget_factory).
+  Returns list of (tab_id, label, widget_factory, tooltip).
+  tooltip comes from sidebar_tooltip if set, else label.
   """
   result = []
   skill_manager.discover_skills()
@@ -49,8 +50,12 @@ def discover_sidebar_tabs():
       if not factory:
         continue
 
+      tooltip = getattr(module, 'sidebar_tooltip', None)
+      if not tooltip or not isinstance(tooltip, str):
+        tooltip = label
+
       tab_id = f"tab-skill-{name}"
-      result.append((tab_id, label, factory))
+      result.append((tab_id, label, factory, tooltip))
     except Exception as e:
       print(f"Error loading skill sidebar component {name}: {e}")
     finally:

@@ -8,6 +8,10 @@ SKILLS = "\uf19d"
 DB = "\uf472"
 SETTINGS = "\ue690"
 
+# Selection
+CHECKED = "\u2611"  # ballot box with check
+UNCHECKED = "\u2610"  # ballot box
+
 # Actions
 DELETE = "\uEA81"  # nf-cod-trash
 EDIT = "\uEA73"  # nf-cod-edit
@@ -26,6 +30,16 @@ FOLDER = "\uEA83"  # nf-cod-folder
 FILE = "\uEA7B"  # nf-cod-file
 EXPAND_DOWN = "\uEAB4"  # nf-cod-chevron_down
 EXPAND_RIGHT = "\uEAB6"  # nf-cod-chevron_right
+
+# Git tree
+GIT_BRANCH = "\ue725"  # nf-cod-git_branch
+GIT_COMMIT = "\ue729"  # nf-cod-git_commit
+GIT_CHANGE = "\uec0c"  # nf-cod-diff
+
+# Database tree
+DB_TABLE = ""  # nf-fa-table
+DB_VIEW = "󱤢"  # nf-md-database_eye_outline
+DB_TRIGGER = "󱘽"  # nf-cod-zap
 
 # File type icons (devicons)
 FILE_ICONS = {
@@ -54,4 +68,41 @@ FILE_ICONS = {
   ".ico": "\uF1C5",
   ".webp": "\uF1C5",
   ".svg": "\uF1C5",
+}
+
+# Default icon set for GenericTree - subclasses can override via icon_set param
+DEFAULT_ICON_SET = {
+  "folder": FOLDER,
+  "file": FILE,
+  "database": DATABASE,
+  "git": GIT,
+  "skill": SKILLS,
+}
+
+# Preset icon sets for domain-specific trees
+DB_ICON_SET = {
+  **DEFAULT_ICON_SET,
+  "folder": FOLDER,
+  "file": FILE,
+  "database": DATABASE,
+  "table": DB_TABLE,
+  "view": DB_VIEW,
+  "trigger": DB_TRIGGER,
+}
+
+GIT_ICON_SET = {
+  **DEFAULT_ICON_SET,
+  "folder": FOLDER,
+  "file": FILE,
+  "git": GIT,
+  "branch": GIT_BRANCH,
+  "change": GIT_CHANGE,
+  "commit": GIT_COMMIT,
+}
+
+SKILL_ICON_SET = {
+  **DEFAULT_ICON_SET,
+  "folder": FOLDER,
+  "file": FILE,
+  "skill": SKILLS,
 }
