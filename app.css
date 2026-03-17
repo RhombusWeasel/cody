@@ -1,0 +1,66 @@
+ToastRack {
+  dock: top;
+}
+
+TabPane {
+  height: 1fr;
+  background: $surface;
+}
+
+Chat {
+  height: 1fr;
+  min-height: 0;
+  background: $surface;
+}
+
+Collapsible {
+  background: $panel;
+  padding: 0 1 1 0;
+}
+
+Button {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+Button:focus {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+$flow_time: 300ms
+.sidebar {
+  dock: left;
+  width: 0%;
+  border: none;
+  background: $surface;
+  transition: offset $flow_time;
+  offset-x: -100%;
+  &.-visible {
+    border: round $primary;
+    width: 25%;
+    transition: offset $flow_time;
+    offset-x: 0;
+  }
+}
+
+.right-sidebar {
+  dock: right;
+  width: 0%;
+  border: none;
+  background: $surface;
+  transition: offset $flow_time;
+  offset-x: 100%;
+  &.-visible {
+    border: round $primary;
+    width: 25%;
+    transition: offset $flow_time;
+    offset-x: 0;
+  }
+}
+
+.center {
+  text-align: center;
+}

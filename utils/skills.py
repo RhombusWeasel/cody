@@ -1,0 +1,143 @@
+import os
+import re
+from pathlib import Path
+from utils.cfg_man import cfg
+
+def parse_frontmatter(content: str) -> tuple[dict, str]:
+    """
+    Parses YAML frontmatter from a markdown file.
+    Returns a tuple of (frontmatter_dict, markdown_body).
+    """
+    lines = content.split('\n')
+    if not lines or lines[0].strip() != '---':
+        return {}, content
+
+    frontmatter = {}
+    body_start_idx = 1
+    
+    for i in range(1, len(lines)):
+        line = lines[i].strip()
+        if line == '---':
+            body_start_idx = i + 1
+            break
+        
+        # Simple key: value parsing
+        if ':' in line:
+            key, value = line.split(':', 1)
+            key = key.strip()
+            value = value.strip()
+            # Remove quotes if present
+            if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+                value = value[1:-1]
+            frontmatter[key] = value
+
+    body = '\n'.join(lines[body_start_idx:])
+    return frontmatter, body
+
+class SkillManager:
+    def __init__(self):
+        self.skills = {}
+        self.discover_skills()
+
+    def discover_skills(self):
+        """
+        Scans for SKILL.md files in directories specified in config (skills.directories).
+        Later directories in the list override skills from earlier directories.
+        """
+        self.skills = {}
+        cody_app_dir = Path(__file__).parent.parent
+        working_dir = cfg.get('session.working_directory', os.getcwd())
+        
+        default_dirs = [
+            "~/.agents/skills",
+            "$CODY_DIR/skills",
+            "{working_directory}/.agents/skills"
+        ]
+        
+        directories = cfg.get('skills.directories', default_dirs)
+        if isinstance(directories, str):
+            try:
+                import ast
+                directories = ast.literal_eval(directories)
+            except Exception:
+                directories = [directories]
+        if not isinstance(directories, list):
+            directories = default_dirs
+            
+        search_paths = []
+        for d in directories:
+            # Replace placeholders
+            d = d.replace('$CODY_DIR', str(cody_app_dir))
+            d = d.replace('{working_directory}', str(working_dir))
+            # Expand ~ to user home
+            d = os.path.expanduser(d)
+            search_paths.append(Path(d))
+        
+        for base_path in search_paths:
+            if not base_path.exists() or not base_path.is_dir():
+                continue
+                
+            # Scan subdirectories for SKILL.md
+            for skill_dir in base_path.iterdir():
+                if not skill_dir.is_dir():
+                    continue
+                    
+                skill_file = skill_dir / 'SKILL.md'
+                if not skill_file.exists():
+                    continue
+                    
+                try:
+                    with open(skill_file, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        
+                    frontmatter, body = parse_frontmatter(content)
+                    
+                    name = frontmatter.get('name')
+                    description = frontmatter.get('description')
+                    
+                    if not name or not description:
+                        # Skip if missing required fields
+                        continue
+                        
+                    # Check if skill is explicitly disabled in config
+                    enabled_config = cfg.get('skills.enabled', {})
+                    if isinstance(enabled_config, dict) and name in enabled_config:
+                        if not enabled_config[name]:
+                            continue
+                            
+                    self.skills[name] = {
+                        'name': name,
+                        'description': description,
+                        'location': str(skill_file),
+                        'base_dir': str(skill_dir),
+                        'body': body
+                    }
+                except Exception as e:
+                    print(f"Error loading skill {skill_file}: {e}")
+
+    def get_catalog_xml(self) -> str:
+        """
+        Returns an XML representation of available skills for the agent prompt.
+        Always re-discovers skills to ensure hot-loaded config changes are respected.
+        """
+        self.discover_skills()
+        
+        if not self.skills:
+            return ""
+            
+        xml = "<available_skills>\n"
+        for name, skill in self.skills.items():
+            xml += "  <skill>\n"
+            xml += f"    <name>{skill['name']}</name>\n"
+            xml += f"    <description>{skill['description']}</description>\n"
+            xml += f"    <location>{skill['location']}</location>\n"
+            xml += "  </skill>\n"
+        xml += "</available_skills>\n"
+        
+        return xml
+
+    def get_skill(self, name: str) -> dict | None:
+        self.discover_skills()
+        return self.skills.get(name)
+
+skill_manager = SkillManager()

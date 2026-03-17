@@ -1,0 +1,121 @@
+"""Generic flat tree - one row per visible entry."""
+from typing import Any
+
+from textual.app import ComposeResult
+from textual.containers import Vertical
+from textual.widgets import Button
+from textual import on
+
+from components.tree.tree_row import TreeRow, NodeToggled, NodeSelected
+from utils.tree_model import TreeEntry
+
+
+class GenericTree(Vertical):
+  """Flat tree - single Vertical with one row per entry. Subclass and override."""
+
+  DEFAULT_CSS = """
+  GenericTree {
+    height: auto;
+  }
+
+  GenericTree #tree_rows {
+    height: auto;
+  }
+  """
+
+  BRANCH = "├── "
+  LAST_BRANCH = "└── "
+  VERTICAL = "│   "
+  SPACER = "    "
+
+  def __init__(self, **kwargs):
+    super().__init__(**kwargs)
+    self._expanded: set[Any] = set()
+    self._rows_container: Vertical | None = None
+
+  def compose(self) -> ComposeResult:
+    self._rows_container = Vertical(id="tree_rows")
+    yield self._rows_container
+
+  def on_mount(self) -> None:
+    self._refresh()
+
+  def get_visible_entries(self) -> list[TreeEntry]:
+    """Override: return list of TreeEntry for visible rows."""
+    raise NotImplementedError
+
+  def get_node_buttons(self, node_id: Any, is_expandable: bool) -> list[Button]:
+    """Override: return buttons for a node."""
+    raise NotImplementedError
+
+  async def load_children_async(self, node_id: Any) -> None:
+    """Override for lazy loading. Called before refresh when expanding."""
+    pass
+
+  def on_node_toggled(self, node_id: Any) -> None:
+    """Override: handle expand/collapse. Default toggles _expanded and refreshes."""
+    if node_id in self._expanded:
+      self._expanded.discard(node_id)
+    else:
+      self._expanded.add(node_id)
+    self._refresh()
+
+  def on_node_selected(self, node_id: Any) -> None:
+    """Override: handle leaf selection."""
+    pass
+
+  def on_button_action(self, node_id: Any, action: str) -> None:
+    """Override: handle button press."""
+    pass
+
+  def reload(self) -> None:
+    """Reload tree from data. Call after external data changes."""
+    self._refresh()
+
+  def _make_btn(self, label: str, tooltip: str, action: str, btn_class: str = "tree-node-btn") -> Button:
+    btn = Button(label, classes=btn_class)
+    btn.tooltip = tooltip
+    setattr(btn, "node_action", action)
+    return btn
+
+  def _refresh(self) -> None:
+    if not self._rows_container:
+      return
+    for child in list(self._rows_container.children):
+      child.remove()
+    for entry in self.get_visible_entries():
+      row = TreeRow(
+        node_id=entry.node_id,
+        indent=entry.indent,
+        is_expandable=entry.is_expandable,
+        is_expanded=entry.is_expanded,
+        display_name=entry.display_name,
+        icon=entry.icon,
+        button_factory=lambda nid, exp: self._get_buttons_for_entry(nid, exp),
+      )
+      self._rows_container.mount(row)
+
+  def _get_buttons_for_entry(self, node_id: Any, is_expandable: bool) -> list[Button]:
+    btns = self.get_node_buttons(node_id, is_expandable)
+    for btn in btns:
+      setattr(btn, "node_id", node_id)
+    return btns
+
+  @on(NodeToggled)
+  async def _on_node_toggled(self, event: NodeToggled) -> None:
+    node_id = event.node_id
+    if node_id not in self._expanded:
+      await self.load_children_async(node_id)
+    self.on_node_toggled(node_id)
+
+  @on(NodeSelected)
+  def _on_node_selected(self, event: NodeSelected) -> None:
+    self.on_node_selected(event.node_id)
+
+  @on(Button.Pressed)
+  def _on_button_pressed(self, event: Button.Pressed) -> None:
+    btn = event.control
+    node_id = getattr(btn, "node_id", None)
+    action = getattr(btn, "node_action", None)
+    if node_id is not None and action is not None:
+      self.on_button_action(node_id, action)

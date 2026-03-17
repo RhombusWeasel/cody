@@ -1,0 +1,21 @@
+[project]
+name = "tui"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "GitPython>=3.1.0",
+    "mcp[cli]>=1.26.0",
+    "ollama>=0.6.1",
+    "openai>=2.28.0",
+    "python-dotenv>=1.2.1",
+    "requests>=2.32.5",
+    "textual-dev>=1.8.0",
+    "textual-terminal",
+    "textual[syntax]>=7.5.0",
+    "tree-sitter-lua>=0.5.0",
+]
+
+[tool.uv.sources]
+textual-terminal = { git = "https://github.com/RhombusWeasel/textual-terminal" }
