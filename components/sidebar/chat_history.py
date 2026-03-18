@@ -1,11 +1,44 @@
 from textual.app import ComposeResult
-from textual.containers import VerticalScroll, Vertical
-from textual.widgets import Button, DataTable
+from textual.containers import VerticalScroll, Vertical, Horizontal
+from textual.widgets import Button, Label
 from textual.message import Message
+from textual.events import Click
 from textual import work, on
 
 from utils.icons import DELETE
 from utils.db import db_manager
+
+
+class ChatItem(Horizontal):
+    class Selected(Message):
+        def __init__(self, chat_id: str, title: str):
+            self.chat_id = chat_id
+            self.title = title
+            super().__init__()
+
+    class Delete(Message):
+        def __init__(self, chat_id: str):
+            self.chat_id = chat_id
+            super().__init__()
+
+    def __init__(self, chat_id: str, title: str, updated: str):
+        super().__init__(classes="chat-item")
+        self.chat_id = chat_id
+        self.chat_title = title
+        self.updated = updated
+
+    def compose(self) -> ComposeResult:
+        yield Label(self.chat_title, classes="chat-item-title")
+        yield Label(self.updated, classes="chat-item-updated")
+        yield Button(DELETE, classes="chat-item-delete", variant="error")
+
+    async def on_click(self, event: Click) -> None:
+        self.post_message(self.Selected(self.chat_id, self.chat_title))
+
+    @on(Button.Pressed, ".chat-item-delete")
+    def on_delete_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        self.post_message(self.Delete(self.chat_id))
 
 
 class ChatHistoryTab(VerticalScroll):
@@ -18,7 +51,7 @@ class ChatHistoryTab(VerticalScroll):
     def compose(self) -> ComposeResult:
         with Vertical():
             yield Button("New Chat", id="btn_new_chat", variant="primary")
-            yield DataTable(id="chat_list_table", cursor_type="cell")
+            yield Vertical(id="chat_list_container")
 
     def on_mount(self) -> None:
         self.load_chats()
@@ -26,29 +59,27 @@ class ChatHistoryTab(VerticalScroll):
     @work
     async def load_chats(self) -> None:
         chats = await db_manager.get_chats()
-        table = self.query_one("#chat_list_table", DataTable)
-        table.clear(columns=True)
-        table.add_columns(("Title", "title"), ("Updated", "updated"), ("Delete", "delete"))
+        container = self.query_one("#chat_list_container", Vertical)
+        await container.remove_children()
+        
         for chat in chats:
             title = chat["title"] or "Untitled Chat"
             updated = chat["updated_at"] or ""
-            table.add_row(title, updated, DELETE, key=chat["id"])
+            chat_id = str(chat["id"])
+            await container.mount(ChatItem(chat_id, title, updated))
 
     @on(Button.Pressed, "#btn_new_chat")
     def on_new_chat(self, event: Button.Pressed) -> None:
         self.post_message(self.ChatSelected(None))
 
-    @on(DataTable.CellSelected, "#chat_list_table")
-    async def on_cell_selected(self, event: DataTable.CellSelected) -> None:
-        table = event.control
-        cell_key = event.cell_key
-        raw_key = cell_key[0] if isinstance(cell_key, tuple) else cell_key
-        row_key = getattr(raw_key, "value", raw_key) or str(raw_key)
-        cell_val = str(event.value).strip() if event.value else ""
-        if DELETE in cell_val:
-            event.stop()
-            await db_manager.delete_chat(row_key)
-            table.remove_row(raw_key)
-        else:
-            title_val = table.get_cell(raw_key, "title")
-            self.post_message(self.ChatSelected(row_key, str(title_val) if title_val else None))
+    @on(ChatItem.Selected)
+    def on_chat_selected(self, event: ChatItem.Selected) -> None:
+        self.post_message(self.ChatSelected(event.chat_id, event.title))
+
+    @on(ChatItem.Delete)
+    async def on_chat_delete(self, event: ChatItem.Delete) -> None:
+        await db_manager.delete_chat(event.chat_id)
+        for item in self.query(ChatItem):
+            if item.chat_id == event.chat_id:
+                item.remove()
+                break

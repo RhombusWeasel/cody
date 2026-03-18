@@ -1,18 +1,37 @@
-#chat_list_table {
-    height: auto;
-}
-
 #btn_new_chat {
     width: 100%;
     height: 1;
     padding: 0;
     border: none;
 }
-#chat_list_table > .datatable--header {
-    height: 1;
-    color: $text-muted;
+
+#chat_list_container {
+    width: 100%;
+    height: auto;
+    padding: 0;
+    layout: vertical;
 }
 
-#chat_list_table .datatable--cursor {
-    background: $primary 20%;
+.chat-item {
+    width: 100%;
+    height: auto;
+}
+
+.chat-item-title {
+    width: 1fr;
+    text-align: left;
+}
+
+.chat-item-updated {
+    width: 1fr;
+    text-align: right;
+    padding: 0 1 0 0;
+}
+
+.chat-item-delete {
+    width: 3;
+    max-width: 3;
+    height: 1;
+    padding: 0;
+    border: none;
 }
