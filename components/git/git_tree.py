@@ -1,5 +1,5 @@
 """Git tree component for the sidebar."""
-from typing import Any
+from typing import Any, Callable
 
 from textual.message import Message
 
@@ -26,16 +26,65 @@ class GitTree(GenericTree):
     self._selected_for_action = selected_for_action or set()
     super().__init__(icon_set=GIT_ICON_SET, **kwargs)
 
+  def _build_category(
+    self,
+    cat_id: str,
+    display_name: str,
+    items: list[Any],
+    empty_text: str,
+    icon_name: str,
+    is_last_category: bool,
+    item_formatter: Callable[[Any], tuple[dict, str]]
+  ) -> list[TreeEntry]:
+    result: list[TreeEntry] = []
+    self._expanded.add(("cat", cat_id))
+
+    cat_indent = self.LAST_BRANCH if is_last_category else self.BRANCH
+    child_indent_prefix = self.SPACER if is_last_category else self.VERTICAL
+
+    result.append(TreeEntry(
+      node_id=("cat", cat_id),
+      indent=cat_indent,
+      is_expandable=True,
+      is_expanded=("cat", cat_id) in self._expanded,
+      display_name=display_name,
+      icon=self.icon("folder"),
+    ))
+
+    if ("cat", cat_id) in self._expanded:
+      if not items:
+        result.append(TreeEntry(
+          node_id={"type": "empty", "category": cat_id},
+          indent=child_indent_prefix + self.LAST_BRANCH,
+          is_expandable=False,
+          is_expanded=False,
+          display_name=empty_text,
+          icon=self.icon("file"),
+        ))
+      else:
+        for i, item in enumerate(items):
+          is_last = i == len(items) - 1
+          branch = self.LAST_BRANCH if is_last else self.BRANCH
+          node_id_dict, label = item_formatter(item)
+          result.append(TreeEntry(
+            node_id=node_id_dict,
+            indent=child_indent_prefix + branch,
+            is_expandable=False,
+            is_expanded=False,
+            display_name=label,
+            icon=self.icon(icon_name),
+          ))
+    return result
+
   def get_visible_entries(self) -> list[TreeEntry]:
     result: list[TreeEntry] = []
     wd = _get_working_dir()
-    self._expanded.add(("cat", "branches"))
-    self._expanded.add(("cat", "staged"))
-    self._expanded.add(("cat", "changes"))
-    self._expanded.add(("cat", "untracked"))
-    self._expanded.add(("cat", "commits"))
 
-    if not git_viewer.get_branches(wd) and not git_viewer.get_status(wd):
+    branches = git_viewer.get_branches(wd)
+    status_list = git_viewer.get_status(wd)
+    commits = git_viewer.get_commits(wd, 15)
+
+    if not branches and not status_list:
       result.append(TreeEntry(
         node_id={"type": "empty"},
         indent="",
@@ -46,172 +95,75 @@ class GitTree(GenericTree):
       ))
       return result
 
-    branches = git_viewer.get_branches(wd)
-    result.append(TreeEntry(
-      node_id=("cat", "branches"),
-      indent=self.BRANCH,
-      is_expandable=True,
-      is_expanded=("cat", "branches") in self._expanded,
-      display_name="Branches",
-      icon=self.icon("folder"),
-    ))
-    if ("cat", "branches") in self._expanded:
-      if not branches:
-        result.append(TreeEntry(
-          node_id={"type": "empty", "category": "branches"},
-          indent=self.VERTICAL + self.LAST_BRANCH,
-          is_expandable=False,
-          is_expanded=False,
-          display_name="(no commits yet)",
-          icon=self.icon("file"),
-        ))
-      else:
-        for i, b in enumerate(branches):
-          is_last = i == len(branches) - 1
-          branch = self.LAST_BRANCH if is_last else self.BRANCH
-          label = f"{b['name']} *" if b["is_current"] else b["name"]
-          result.append(TreeEntry(
-            node_id={"type": "branch", "name": b["name"], "is_current": b["is_current"]},
-            indent=self.VERTICAL + branch,
-            is_expandable=False,
-            is_expanded=False,
-            display_name=label,
-            icon=self.icon("branch"),
-          ))
-
-    status_list = git_viewer.get_status(wd)
     staged_list = [s for s in status_list if s["staged"]]
     unstaged_list = [s for s in status_list if not s["staged"] and s["status"] != "??"]
     untracked_list = [s for s in status_list if not s["staged"] and s["status"] == "??"]
 
-    result.append(TreeEntry(
-      node_id=("cat", "staged"),
-      indent=self.BRANCH,
-      is_expandable=True,
-      is_expanded=("cat", "staged") in self._expanded,
+    result.extend(self._build_category(
+      cat_id="branches",
+      display_name="Branches",
+      items=branches,
+      empty_text="(no commits yet)",
+      icon_name="branch",
+      is_last_category=False,
+      item_formatter=lambda b: (
+        {"type": "branch", "name": b["name"], "is_current": b["is_current"]},
+        f"{b['name']} *" if b["is_current"] else b["name"]
+      )
+    ))
+
+    result.extend(self._build_category(
+      cat_id="staged",
       display_name="Staged",
-      icon=self.icon("folder"),
+      items=staged_list,
+      empty_text="(none)",
+      icon_name="change",
+      is_last_category=False,
+      item_formatter=lambda s: (
+        {"type": "change", "path": s["path"], "staged": True},
+        f"{s['status']} {s['path']}"
+      )
     ))
-    if ("cat", "staged") in self._expanded:
-      if not staged_list:
-        result.append(TreeEntry(
-          node_id={"type": "empty", "category": "staged"},
-          indent=self.VERTICAL + self.LAST_BRANCH,
-          is_expandable=False,
-          is_expanded=False,
-          display_name="(none)",
-          icon=self.icon("file"),
-        ))
-      else:
-        for i, s in enumerate(staged_list):
-          is_last = i == len(staged_list) - 1
-          branch = self.LAST_BRANCH if is_last else self.BRANCH
-          label = f"{s['status']} {s['path']}"
-          result.append(TreeEntry(
-            node_id={"type": "change", "path": s["path"], "staged": True},
-            indent=self.VERTICAL + branch,
-            is_expandable=False,
-            is_expanded=False,
-            display_name=label,
-            icon=self.icon("change"),
-          ))
 
-    result.append(TreeEntry(
-      node_id=("cat", "changes"),
-      indent=self.BRANCH,
-      is_expandable=True,
-      is_expanded=("cat", "changes") in self._expanded,
+    result.extend(self._build_category(
+      cat_id="changes",
       display_name="Changes",
-      icon=self.icon("folder"),
+      items=unstaged_list,
+      empty_text="(clean)",
+      icon_name="change",
+      is_last_category=False,
+      item_formatter=lambda s: (
+        {"type": "change", "path": s["path"], "staged": False, "untracked": False},
+        f"{s['status']} {s['path']}"
+      )
     ))
-    if ("cat", "changes") in self._expanded:
-      if not unstaged_list:
-        result.append(TreeEntry(
-          node_id={"type": "empty", "category": "changes"},
-          indent=self.VERTICAL + self.LAST_BRANCH,
-          is_expandable=False,
-          is_expanded=False,
-          display_name="(clean)",
-          icon=self.icon("file"),
-        ))
-      else:
-        for i, s in enumerate(unstaged_list):
-          is_last = i == len(unstaged_list) - 1
-          branch = self.LAST_BRANCH if is_last else self.BRANCH
-          label = f"{s['status']} {s['path']}"
-          result.append(TreeEntry(
-            node_id={"type": "change", "path": s["path"], "staged": False, "untracked": False},
-            indent=self.VERTICAL + branch,
-            is_expandable=False,
-            is_expanded=False,
-            display_name=label,
-            icon=self.icon("change"),
-          ))
 
-    result.append(TreeEntry(
-      node_id=("cat", "untracked"),
-      indent=self.BRANCH,
-      is_expandable=True,
-      is_expanded=("cat", "untracked") in self._expanded,
+    result.extend(self._build_category(
+      cat_id="untracked",
       display_name="Untracked",
-      icon=self.icon("folder"),
+      items=untracked_list,
+      empty_text="(none)",
+      icon_name="change",
+      is_last_category=False,
+      item_formatter=lambda s: (
+        {"type": "change", "path": s["path"], "staged": False, "untracked": True},
+        f"{s['status']} {s['path']}"
+      )
     ))
-    if ("cat", "untracked") in self._expanded:
-      if not untracked_list:
-        result.append(TreeEntry(
-          node_id={"type": "empty", "category": "untracked"},
-          indent=self.VERTICAL + self.LAST_BRANCH,
-          is_expandable=False,
-          is_expanded=False,
-          display_name="(none)",
-          icon=self.icon("file"),
-        ))
-      else:
-        for i, s in enumerate(untracked_list):
-          is_last = i == len(untracked_list) - 1
-          branch = self.LAST_BRANCH if is_last else self.BRANCH
-          label = f"{s['status']} {s['path']}"
-          result.append(TreeEntry(
-            node_id={"type": "change", "path": s["path"], "staged": False, "untracked": True},
-            indent=self.VERTICAL + branch,
-            is_expandable=False,
-            is_expanded=False,
-            display_name=label,
-            icon=self.icon("change"),
-          ))
 
-    commits = git_viewer.get_commits(wd, 15)
-    result.append(TreeEntry(
-      node_id=("cat", "commits"),
-      indent=self.LAST_BRANCH,
-      is_expandable=True,
-      is_expanded=("cat", "commits") in self._expanded,
+    result.extend(self._build_category(
+      cat_id="commits",
       display_name="Recent Commits",
-      icon=self.icon("folder"),
+      items=commits,
+      empty_text="(none)",
+      icon_name="commit",
+      is_last_category=True,
+      item_formatter=lambda c: (
+        {"type": "commit", "hash": c["full_hash"], "short": c["hash"], "message": c["message"]},
+        f"{c['hash']} {c['message'][:15]}..."
+      )
     ))
-    if ("cat", "commits") in self._expanded:
-      if not commits:
-        result.append(TreeEntry(
-          node_id={"type": "empty", "category": "commits"},
-          indent=self.SPACER + self.LAST_BRANCH,
-          is_expandable=False,
-          is_expanded=False,
-          display_name="(none)",
-          icon=self.icon("file"),
-        ))
-      else:
-        for i, c in enumerate(commits):
-          is_last = i == len(commits) - 1
-          branch = self.LAST_BRANCH if is_last else self.BRANCH
-          label = f"{c['hash']} {c['message'][:15]}..."
-          result.append(TreeEntry(
-            node_id={"type": "commit", "hash": c["full_hash"], "short": c["hash"], "message": c["message"]},
-            indent=self.SPACER + branch,
-            is_expandable=False,
-            is_expanded=False,
-            display_name=label,
-            icon=self.icon("commit"),
-          ))
+
     return result
 
   def get_node_buttons(self, node_id, is_expandable) -> list:

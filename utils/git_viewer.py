@@ -27,19 +27,17 @@ def get_status(path: str) -> list[dict]:
     staged_diffs = list(repo.index.diff("HEAD", create_patch=False)) if repo.head.is_valid() else []
     unstaged_diffs = list(repo.index.diff(None, create_patch=False))
 
-    staged_paths = {d.b_path or d.a_path for d in staged_diffs}
+    staged_paths = {d.a_path for d in staged_diffs}
     for d in staged_diffs:
       change_type = d.change_type
       letter = "A" if change_type == "A" else "D" if change_type == "D" else "M"
-      path = d.b_path or d.a_path
-      result.append({"path": path, "status": letter, "staged": True})
+      result.append({"path": d.a_path, "status": letter, "staged": True})
 
     for d in unstaged_diffs:
-      path = d.b_path or d.a_path
-      if path not in staged_paths:
+      if d.a_path not in staged_paths:
         change_type = d.change_type
         letter = "A" if change_type == "A" else "D" if change_type == "D" else "M"
-        result.append({"path": path, "status": letter, "staged": False})
+        result.append({"path": d.a_path, "status": letter, "staged": False})
 
     for p in repo.untracked_files:
       result.append({"path": p, "status": "??", "staged": False})

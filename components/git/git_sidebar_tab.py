@@ -32,7 +32,7 @@ class GitSidebarTab(Vertical):
       yield Button("Unstage", id="btn_git_unstage", classes="git-icon-btn")
       yield Button("Checkout", id="btn_git_checkout", classes="git-icon-btn")
     with VerticalScroll(id="git_tree_container"):
-      yield Label("Select an item", id="git_selected_label")
+      yield Label("Select an item", id="git_selected_label", markup=False)
       yield GitTree(id="git_tree", selected_for_action=self.selected_for_action)
 
   def on_mount(self) -> None:

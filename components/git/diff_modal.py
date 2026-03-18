@@ -26,7 +26,7 @@ class DiffModal(ModalScreen):
       word_wrap=False,
     )
     with Vertical(id="diff_modal_container"):
-      yield Label(self.title_text, id="diff_modal_header")
+      yield Label(self.title_text, id="diff_modal_header", markup=False)
       with VerticalScroll(id="diff_modal_content"):
         yield Static(syntax)
       yield Button("Close", id="btn_diff_close", variant="primary")

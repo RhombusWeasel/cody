@@ -57,9 +57,9 @@ class TreeRow(Widget):
     label_text = self.icon + " " + self.display_name
 
     with Horizontal():
-      yield Label(self.indent, classes="tree-indent")
-      yield Label(expand, classes="tree-expand")
-      yield Label(label_text, classes="tree-label")
+      yield Label(self.indent, classes="tree-indent", markup=False)
+      yield Label(expand, classes="tree-expand", markup=False)
+      yield Label(label_text, classes="tree-label", markup=False)
       for btn in self._button_factory(self.node_id, self.is_expandable):
         yield btn
 
