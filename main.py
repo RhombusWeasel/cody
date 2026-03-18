@@ -111,7 +111,7 @@ class TuiApp(App):
 
   def compose(self):
     with Vertical():
-      yield Header()
+      yield Header(show_clock=True)
       with Horizontal():
         side_classes = 'sidebar -visible' if cfg.get('interface.sidebar_open_on_start') else 'sidebar'
         yield Sidebar(id='util-sidebar', classes=side_classes)
