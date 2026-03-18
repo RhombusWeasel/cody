@@ -40,6 +40,8 @@ GIT_CHANGE = ""  # nf-cod-diff
 GIT_DISCARD = ""  # nf-cod-discard
 GIT_IGNORE = ""  # nf-cod-file_symlink_file
 GIT_CHERRY_PICK = ""  # nf-fae-cherry
+GIT_ADD = ""  # nf-fa-plus
+GIT_UNSTAGE = ""  # nf-fa-minus
 
 # Database tree
 DB_TABLE = ""  # nf-fa-table
