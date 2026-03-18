@@ -9,7 +9,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 import git
-from utils.git import is_git_repo
+from utils.git import is_git_repo, get_branches_info
 
 def main():
   parser = argparse.ArgumentParser(description="Manage git branches.")
@@ -35,14 +35,14 @@ def main():
     sys.exit(1)
 
   if args.list:
-    if not repo.heads:
+    branches = get_branches_info(repo)
+    if not branches:
       print("No branches found.")
     else:
       print("Local branches:")
-      current = repo.head.ref.name if repo.head.is_valid() and not repo.head.is_detached else None
-      for b in repo.heads:
-        prefix = "* " if b.name == current else "  "
-        print(f"{prefix}{b.name}")
+      for b in branches:
+        prefix = "* " if b["is_current"] else "  "
+        print(f"{prefix}{b['name']}")
         
   if args.create:
     try:

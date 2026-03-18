@@ -9,7 +9,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 import git
-from utils.git import is_git_repo
+from utils.git import is_git_repo, get_recent_commits
 
 def main():
   parser = argparse.ArgumentParser(description="Shows recent commit history.")
@@ -24,21 +24,14 @@ def main():
     
   try:
     repo = git.Repo(args.path)
-    if not repo.head.is_valid():
-      print("No commits found.")
-      sys.exit(0)
-      
-    commits = list(repo.iter_commits(max_count=args.count))
+    commits = get_recent_commits(repo, args.count)
     if not commits:
       print("No commits found.")
       sys.exit(0)
       
     print(f"Recent commits (up to {args.count}):")
     for c in commits:
-      short_hash = c.hexsha[:7] if len(c.hexsha) >= 7 else c.hexsha
-      msg = (c.message or "").split("\n")[0].strip()
-      time_str = c.committed_datetime.strftime("%Y-%m-%d %H:%M")
-      print(f"{short_hash} - {time_str} - {msg}")
+      print(f"{c['hash']} - {c['time']} - {c['message']}")
   except Exception as e:
     print(f"Error getting commits: {e}")
     sys.exit(1)

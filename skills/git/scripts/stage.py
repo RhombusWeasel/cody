@@ -9,7 +9,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 import git
-from utils.git import is_git_repo
+from utils.git import is_git_repo, stage_all
 
 def main():
   parser = argparse.ArgumentParser(description="Stages files for commit.")
@@ -28,11 +28,7 @@ def main():
       repo.index.add([args.file_path])
       print(f"Successfully staged {args.file_path}")
     else:
-      if repo.untracked_files:
-        repo.index.add(repo.untracked_files)
-      diffs = [item.a_path for item in repo.index.diff(None)]
-      if diffs:
-        repo.index.add(diffs)
+      stage_all(repo)
       print("Successfully staged all changes.")
   except Exception as e:
     print(f"Failed to stage changes: {e}")

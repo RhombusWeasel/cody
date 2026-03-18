@@ -10,6 +10,7 @@ from components.input_modal import InputModal
 from components.git.diff_modal import DiffModal
 from components.git.git_tree import GitTree, SelectionChanged, _get_working_dir
 from utils.agent import TaskAgent
+from utils.git import stage_all
 
 COMMIT_MSG_PROMPT = """You generate conventional git commit messages. Output only the message, no preamble.
 Format: type(scope): subject. Types: feat, fix, docs, style, refactor, test, chore.
@@ -153,11 +154,7 @@ class GitSidebarTab(Vertical):
         self.app.notify("Stage failed", severity="error")
     else:
       try:
-        if repo.untracked_files:
-          repo.index.add(repo.untracked_files)
-        diffs = [item.a_path for item in repo.index.diff(None)]
-        if diffs:
-          repo.index.add(diffs)
+        stage_all(repo)
         self.app.notify("Staged all")
         self._refresh_tree()
       except Exception:

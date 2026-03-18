@@ -9,6 +9,7 @@ from components.tree import GenericTree
 from components.input_modal import InputModal
 from utils.cfg_man import cfg
 from utils.tree_model import TreeEntry
+from utils.git import get_file_status, get_branches_info, get_recent_commits
 from utils.icons import GIT_ICON_SET, CHECKED, UNCHECKED, SELECT_ALL, CLEAR_SELECTION, GIT_DISCARD, GIT_IGNORE, GIT_CHERRY_PICK, GIT_BRANCH, RUN, DELETE, GIT_ADD, GIT_UNSTAGE
 
 
@@ -109,54 +110,20 @@ class GitTree(GenericTree):
       return result
 
     # Branches
-    branches = []
-    try:
-      current = repo.head.ref.name if repo.head.is_valid() and not repo.head.is_detached else None
-      for ref in repo.heads:
-        branches.append({"name": ref.name, "is_current": ref.name == current})
-    except Exception:
-      pass
+    branches = get_branches_info(repo)
 
     # Status
-    staged_list = []
-    unstaged_list = []
-    untracked_list = []
-    try:
-      staged_diffs = list(repo.index.diff("HEAD", create_patch=False)) if repo.head.is_valid() else []
-      unstaged_diffs = list(repo.index.diff(None, create_patch=False))
-
-      self.staged_paths = {d.a_path for d in staged_diffs}
-      for d in staged_diffs:
-        change_type = d.change_type
-        letter = "A" if change_type == "A" else "D" if change_type == "D" else "M"
-        staged_list.append({"path": d.a_path, "status": letter, "staged": True})
-
-      for d in unstaged_diffs:
-        if d.a_path not in self.staged_paths:
-          change_type = d.change_type
-          letter = "A" if change_type == "A" else "D" if change_type == "D" else "M"
-          unstaged_list.append({"path": d.a_path, "status": letter, "staged": False})
-
-      self.unstaged_paths = {s["path"] for s in unstaged_list}
-      
-      for p in repo.untracked_files:
-        untracked_list.append({"path": p, "status": "??", "staged": False})
-      
-      self.untracked_paths = set(repo.untracked_files)
-    except Exception:
-      pass
+    status = get_file_status(repo)
+    staged_list = [{"path": s["path"], "status": s["status"], "staged": True} for s in status["staged"]]
+    unstaged_list = [{"path": s["path"], "status": s["status"], "staged": False} for s in status["unstaged"]]
+    untracked_list = [{"path": s["path"], "status": s["status"], "staged": False} for s in status["untracked"]]
+    
+    self.staged_paths = {s["path"] for s in staged_list}
+    self.unstaged_paths = {s["path"] for s in unstaged_list}
+    self.untracked_paths = {s["path"] for s in untracked_list}
 
     # Commits
-    commits = []
-    if repo.head.is_valid():
-      try:
-        for c in repo.iter_commits(max_count=15):
-          short_hash = c.hexsha[:7] if len(c.hexsha) >= 7 else c.hexsha
-          msg = (c.message or "").split("\n")[0].strip()
-          time_str = c.committed_datetime.strftime("%Y-%m-%d %H:%M")
-          commits.append({"hash": short_hash, "full_hash": c.hexsha, "message": msg, "time": time_str})
-      except Exception:
-        pass
+    commits = get_recent_commits(repo, 15)
 
     result.extend(self._build_category(
       cat_id="branches",

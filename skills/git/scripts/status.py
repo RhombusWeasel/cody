@@ -9,7 +9,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 import git
-from utils.git import is_git_repo
+from utils.git import is_git_repo, get_file_status
 
 def main():
   parser = argparse.ArgumentParser(description="Shows the current git status.")
@@ -23,28 +23,10 @@ def main():
     
   try:
     repo = git.Repo(args.path)
-    
-    staged = []
-    unstaged = []
-    untracked = []
-    
-    staged_diffs = list(repo.index.diff("HEAD", create_patch=False)) if repo.head.is_valid() else []
-    unstaged_diffs = list(repo.index.diff(None, create_patch=False))
-
-    staged_paths = {d.a_path for d in staged_diffs}
-    for d in staged_diffs:
-      change_type = d.change_type
-      letter = "A" if change_type == "A" else "D" if change_type == "D" else "M"
-      staged.append({"path": d.a_path, "status": letter})
-
-    for d in unstaged_diffs:
-      if d.a_path not in staged_paths:
-        change_type = d.change_type
-        letter = "A" if change_type == "A" else "D" if change_type == "D" else "M"
-        unstaged.append({"path": d.a_path, "status": letter})
-
-    for p in repo.untracked_files:
-      untracked.append({"path": p, "status": "??"})
+    status = get_file_status(repo)
+    staged = status["staged"]
+    unstaged = status["unstaged"]
+    untracked = status["untracked"]
       
     if not staged and not unstaged and not untracked:
       print("No changes (working tree clean).")
