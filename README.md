@@ -2,82 +2,6 @@
 
 A TUI (terminal user interface) AI coding assistant built with [Textual](https://textual.textualize.io/). Chat with LLMs, manage files, run commands, and work with git—all from the terminal.
 
-## Features
-
-### Chat
-- Multi-tab chat with customizable tooling.
-- Slash commands (e.g. `/help`, `/clear`) with autocomplete; project-specific commands from `{project}/.agents/commands/`
-
-### Sidebar
-- **Chat history** – Browse and restore past conversations
-- **File tree** – Navigate project files
-- **Git** – View status, stage/unstage, commit (with AI-generated messages), checkout branches, view diffs
-- **Database** – Connect to SQLite DBs, run queries, view results, export CSV
-- **Tools** – Enable/disable tools and skill groups
-- **Settings** – Provider, model, sidebar visibility, system/tool message display
-- **Skill tabs** – Extensible sidebar tabs from skills (e.g. coding skill)
-
-### Terminal
-- Integrated terminal (right sidebar)
-- Send terminal output to chat with optional question
-
-### Skills
-- Pluggable skills from `~/.agents/skills`, `$CODY_DIR/skills`, `{project}/.agents/skills`
-- Built-in **file-manipulation** skill: create, read, edit, search files
-- Skills expose tools via `activate_skill` and `run_skill`
-- Per-skill enable/disable in config
-
-### Tools
-- `run_command` – Execute shell commands
-- `activate_skill` – Load skill instructions
-- `run_skill` – Run skill scripts
-- Custom tools from `tools/` and `{project}/.agents/tools/`
-
-### Config
-- JSON config: `~/.agents/cody_settings.json` (global) + `{project}/.agents/cody_config.json` (local)
-- Provider/model selection, API keys, prompts, skill directories
-
-## Customized Tooling
-
-Both **skills** and **slash commands** use tiered loading: later directories override earlier ones for the same name.
-
-| Layer | Skills | Commands |
-|-------|--------|----------|
-| Built-in | `$CODY_DIR/skills/` | `$CODY_DIR/components/chat/cmd/` |
-| Cody-level | — | `$CODY_DIR/cmd/` |
-| User global | `~/.agents/skills/` | `~/.agents/commands/` |
-| Project | `{project}/.agents/skills/` | `{project}/.agents/commands/` |
-
-Configure paths via `skills.directories` and `commands.directories` in config.
-
-### Example: custom slash command
-
-Create `my_project/.agents/commands/echo.py`:
-
-```python
-from utils.cmd_loader import CommandBase
-
-class EchoCommand(CommandBase):
-    description = "Echoes the given text as a system message"
-
-    async def execute(self, app, args: list[str]):
-        try:
-            from components.chat.chat import MsgBox
-            from textual.widgets import TabbedContent
-
-            text = " ".join(args) if args else "(nothing)"
-            tabs = app.query_one("#chat_tabs", TabbedContent)
-            if not tabs.active:
-                return
-            pane = tabs.get_pane(tabs.active)
-            msg_box = pane.query_one(MsgBox)
-            msg_box.messages = [*msg_box.messages, {"role": "system", "content": text}]
-        except Exception as e:
-            print(f"Echo command failed: {e}")
-```
-
-Use `/echo hello world` in chat. One `CommandBase` subclass per file; filename becomes the command name.
-
 ## Requirements
 
 - Python 3.11+
@@ -105,6 +29,48 @@ uv run python main.py [working_directory]
 ```
 
 Defaults to current directory. Working directory is used for file tree, git, and skills.
+
+## Features
+
+### Skills
+Fully compliant with the anthropic skill specification allowing for tiered loading of configuration and skillsets.
+Pluggable skills from 
+  - `$CODY_DIR/skills`
+  - `~/.agents/skills`
+  - `{project}/.agents/skills`
+
+
+### Tools
+We only pass 3 tools to the agent by default
+- `run_command` – Execute shell commands
+- `activate_skill` – Load skill instructions
+- `run_skill` – Run skill scripts
+- Custom tools are loaded from `$CODY_DIR/tools/` and `{project}/.agents/tools/` Tools are passed with every call and must contain a valid docstring as they bypass the skills progressive loading system.
+Because of this they are discouraged and users should favour the below skills implementation.
+
+### Config
+- JSON config: `~/.agents/cody_settings.json` (global) + `{project}/.agents/cody_config.json` (local)
+- Provider/model selection, API keys, prompts, skill directories
+
+## Customized Tooling
+
+**tools**, **skills** and **slash commands** use tiered loading: later directories override earlier ones for the same name.
+
+| Layer | Skills | Commands |
+|-------|--------|----------|
+| Built-in | `$CODY_DIR/skills/` | `$CODY_DIR/components/chat/cmd/` |
+| Cody-level | — | `$CODY_DIR/cmd/` |
+| User global | `~/.agents/skills/` | `~/.agents/commands/` |
+| Project | `{project}/.agents/skills/` | `{project}/.agents/commands/` |
+
+Configure paths via `skills.directories` and `commands.directories` in config.
+
+### Examples
+
+Check out the `examples/` directory for sample code on how to extend Cody:
+- `examples/command/` - Custom slash commands
+- `examples/skills/` - Custom skills
+- `examples/component/` - Custom sidebar UI components
 
 ## Keybindings
 
