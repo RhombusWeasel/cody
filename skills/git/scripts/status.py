@@ -8,7 +8,7 @@ project_root = os.path.abspath(os.path.join(script_dir, "..", "..", ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from utils.git_viewer import get_status
+import git
 from utils.git import is_git_repo
 
 def main():
@@ -21,33 +21,56 @@ def main():
     print(f"Error: '{args.path}' is not a git repository.")
     sys.exit(1)
     
-  status_list = get_status(args.path)
-  
-  if not status_list:
-    print("No changes (working tree clean).")
-    sys.exit(0)
+  try:
+    repo = git.Repo(args.path)
     
-  staged = [s for s in status_list if s["staged"]]
-  unstaged = [s for s in status_list if not s["staged"] and s["status"] != "??"]
-  untracked = [s for s in status_list if not s["staged"] and s["status"] == "??"]
-  
-  if staged:
-    print("Staged changes:")
-    for s in staged:
-      print(f"  {s['status']} {s['path']}")
-    print()
+    staged = []
+    unstaged = []
+    untracked = []
+    
+    staged_diffs = list(repo.index.diff("HEAD", create_patch=False)) if repo.head.is_valid() else []
+    unstaged_diffs = list(repo.index.diff(None, create_patch=False))
+
+    staged_paths = {d.a_path for d in staged_diffs}
+    for d in staged_diffs:
+      change_type = d.change_type
+      letter = "A" if change_type == "A" else "D" if change_type == "D" else "M"
+      staged.append({"path": d.a_path, "status": letter})
+
+    for d in unstaged_diffs:
+      if d.a_path not in staged_paths:
+        change_type = d.change_type
+        letter = "A" if change_type == "A" else "D" if change_type == "D" else "M"
+        unstaged.append({"path": d.a_path, "status": letter})
+
+    for p in repo.untracked_files:
+      untracked.append({"path": p, "status": "??"})
       
-  if unstaged:
-    print("Unstaged changes:")
-    for s in unstaged:
-      print(f"  {s['status']} {s['path']}")
-    print()
+    if not staged and not unstaged and not untracked:
+      print("No changes (working tree clean).")
+      sys.exit(0)
       
-  if untracked:
-    print("Untracked files:")
-    for s in untracked:
-      print(f"  {s['status']} {s['path']}")
-    print()
+    if staged:
+      print("Staged changes:")
+      for s in staged:
+        print(f"  {s['status']} {s['path']}")
+      print()
+        
+    if unstaged:
+      print("Unstaged changes:")
+      for s in unstaged:
+        print(f"  {s['status']} {s['path']}")
+      print()
+        
+    if untracked:
+      print("Untracked files:")
+      for s in untracked:
+        print(f"  {s['status']} {s['path']}")
+      print()
+      
+  except Exception as e:
+    print(f"Error getting status: {e}")
+    sys.exit(1)
 
 if __name__ == "__main__":
   main()

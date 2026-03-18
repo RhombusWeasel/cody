@@ -8,7 +8,7 @@ project_root = os.path.abspath(os.path.join(script_dir, "..", "..", ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from utils.git_viewer import get_diff
+import git
 from utils.git import is_git_repo
 
 def main():
@@ -23,8 +23,17 @@ def main():
     print(f"Error: '{args.path}' is not a git repository.")
     sys.exit(1)
     
-  diff_output = get_diff(args.path, args.file_path, args.staged)
-  print(diff_output)
+  try:
+    repo = git.Repo(args.path)
+    if args.staged:
+      diff_output = repo.git.diff("--cached", "--", args.file_path) if args.file_path else repo.git.diff("--cached")
+    else:
+      diff_output = repo.git.diff("--", args.file_path) if args.file_path else repo.git.diff()
+      
+    print(diff_output or "(no changes)")
+  except Exception as e:
+    print(f"Error getting diff: {e}")
+    sys.exit(1)
 
 if __name__ == "__main__":
   main()

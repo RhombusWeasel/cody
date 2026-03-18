@@ -8,7 +8,7 @@ project_root = os.path.abspath(os.path.join(script_dir, "..", "..", ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from utils.git_viewer import get_branches, create_branch, checkout_branch
+import git
 from utils.git import is_git_repo
 
 def main():
@@ -28,29 +28,39 @@ def main():
     print("Please specify an action: --list, --create, or --checkout")
     sys.exit(1)
     
+  try:
+    repo = git.Repo(args.path)
+  except git.exc.InvalidGitRepositoryError:
+    print(f"Error: '{args.path}' is not a valid git repository.")
+    sys.exit(1)
+
   if args.list:
-    branches = get_branches(args.path)
-    if not branches:
+    if not repo.heads:
       print("No branches found.")
     else:
       print("Local branches:")
-      for b in branches:
-        prefix = "* " if b["is_current"] else "  "
-        print(f"{prefix}{b['name']}")
+      current = repo.head.ref.name if repo.head.is_valid() and not repo.head.is_detached else None
+      for b in repo.heads:
+        prefix = "* " if b.name == current else "  "
+        print(f"{prefix}{b.name}")
         
   if args.create:
-    success = create_branch(args.path, args.create)
-    if success:
+    try:
+      repo.create_head(args.create)
       print(f"Successfully created branch '{args.create}'.")
-    else:
-      print(f"Failed to create branch '{args.create}'.")
+    except Exception as e:
+      print(f"Failed to create branch '{args.create}': {e}")
       sys.exit(1)
       
   if args.checkout:
-    success, err_msg = checkout_branch(args.path, args.checkout)
-    if success:
+    try:
+      repo.heads[args.checkout].checkout()
       print(f"Successfully checked out branch '{args.checkout}'.")
-    else:
+    except IndexError:
+      print(f"Failed to checkout branch '{args.checkout}': Branch not found")
+      sys.exit(1)
+    except Exception as e:
+      err_msg = getattr(e, "stderr", str(e)).strip()
       print(f"Failed to checkout branch '{args.checkout}': {err_msg}")
       sys.exit(1)
 

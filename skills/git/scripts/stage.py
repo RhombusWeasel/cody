@@ -8,7 +8,7 @@ project_root = os.path.abspath(os.path.join(script_dir, "..", "..", ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from utils.git_viewer import stage
+import git
 from utils.git import is_git_repo
 
 def main():
@@ -22,15 +22,20 @@ def main():
     print(f"Error: '{args.path}' is not a git repository.")
     sys.exit(1)
     
-  success = stage(args.path, args.file_path)
-  
-  if success:
+  try:
+    repo = git.Repo(args.path)
     if args.file_path:
+      repo.index.add([args.file_path])
       print(f"Successfully staged {args.file_path}")
     else:
+      if repo.untracked_files:
+        repo.index.add(repo.untracked_files)
+      diffs = [item.a_path for item in repo.index.diff(None)]
+      if diffs:
+        repo.index.add(diffs)
       print("Successfully staged all changes.")
-  else:
-    print("Failed to stage changes.")
+  except Exception as e:
+    print(f"Failed to stage changes: {e}")
     sys.exit(1)
 
 if __name__ == "__main__":
