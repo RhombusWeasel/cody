@@ -121,9 +121,13 @@ def stage(path: str, file_path: str | None = None) -> bool:
     if file_path:
       repo.index.add([file_path])
     else:
-      repo.git.add(".")
+      if repo.untracked_files:
+        repo.index.add(repo.untracked_files)
+      diffs = [item.a_path for item in repo.index.diff(None)]
+      if diffs:
+        repo.index.add(diffs)
     return True
-  except GitCommandError:
+  except Exception:
     return False
 
 
@@ -134,11 +138,11 @@ def unstage(path: str, file_path: str | None = None) -> bool:
     return False
   try:
     if file_path:
-      repo.git.reset("HEAD", file_path)
+      repo.head.reset(paths=[file_path])
     else:
-      repo.git.reset("HEAD")
+      repo.head.reset()
     return True
-  except GitCommandError:
+  except Exception:
     return False
 
 
@@ -176,10 +180,10 @@ def discard(path: str, file_path: str) -> bool:
   if not repo:
     return False
   try:
-    repo.git.checkout("--", file_path)
-    repo.git.reset("HEAD", file_path)
+    repo.head.reset(paths=[file_path])
+    repo.index.checkout(paths=[file_path], force=True)
     return True
-  except GitCommandError:
+  except Exception:
     return False
 
 
@@ -214,11 +218,11 @@ def create_branch(path: str, branch_name: str, from_commit: str | None = None) -
     return False
   try:
     if from_commit:
-      repo.git.branch(branch_name, from_commit)
+      repo.create_head(branch_name, commit=from_commit)
     else:
-      repo.git.branch(branch_name)
+      repo.create_head(branch_name)
     return True
-  except GitCommandError:
+  except Exception:
     return False
 
 
@@ -228,10 +232,7 @@ def delete_branch(path: str, branch_name: str, force: bool = False) -> bool:
   if not repo:
     return False
   try:
-    if force:
-      repo.git.branch("-D", branch_name)
-    else:
-      repo.git.branch("-d", branch_name)
+    repo.delete_head(branch_name, force=force)
     return True
-  except GitCommandError:
+  except Exception:
     return False

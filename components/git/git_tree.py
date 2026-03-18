@@ -1,12 +1,13 @@
 """Git tree component for the sidebar."""
 from typing import Any, Callable
+from pathlib import Path
 
+import git
 from textual.message import Message
 
 from components.tree import GenericTree
 from components.input_modal import InputModal
 from utils.cfg_man import cfg
-from utils import git_viewer
 from utils.tree_model import TreeEntry
 from utils.icons import GIT_ICON_SET, CHECKED, UNCHECKED, SELECT_ALL, CLEAR_SELECTION, GIT_DISCARD, GIT_IGNORE, GIT_CHERRY_PICK, GIT_BRANCH, RUN, DELETE, GIT_ADD, GIT_UNSTAGE
 
@@ -24,6 +25,9 @@ class GitTree(GenericTree):
 
   def __init__(self, selected_for_action: set[str] | None = None, **kwargs):
     self._selected_for_action = selected_for_action or set()
+    self.staged_paths: set[str] = set()
+    self.unstaged_paths: set[str] = set()
+    self.untracked_paths: set[str] = set()
     super().__init__(icon_set=GIT_ICON_SET, **kwargs)
     self._expanded.update([
       ("cat", "branches"),
@@ -91,11 +95,9 @@ class GitTree(GenericTree):
     result: list[TreeEntry] = []
     wd = _get_working_dir()
 
-    branches = git_viewer.get_branches(wd)
-    status_list = git_viewer.get_status(wd)
-    commits = git_viewer.get_commits(wd, 15)
-
-    if not branches and not status_list:
+    try:
+      repo = git.Repo(wd)
+    except git.exc.InvalidGitRepositoryError:
       result.append(TreeEntry(
         node_id={"type": "empty"},
         indent="",
@@ -106,9 +108,55 @@ class GitTree(GenericTree):
       ))
       return result
 
-    staged_list = [s for s in status_list if s["staged"]]
-    unstaged_list = [s for s in status_list if not s["staged"] and s["status"] != "??"]
-    untracked_list = [s for s in status_list if not s["staged"] and s["status"] == "??"]
+    # Branches
+    branches = []
+    try:
+      current = repo.head.ref.name if repo.head.is_valid() and not repo.head.is_detached else None
+      for ref in repo.heads:
+        branches.append({"name": ref.name, "is_current": ref.name == current})
+    except Exception:
+      pass
+
+    # Status
+    staged_list = []
+    unstaged_list = []
+    untracked_list = []
+    try:
+      staged_diffs = list(repo.index.diff("HEAD", create_patch=False)) if repo.head.is_valid() else []
+      unstaged_diffs = list(repo.index.diff(None, create_patch=False))
+
+      self.staged_paths = {d.a_path for d in staged_diffs}
+      for d in staged_diffs:
+        change_type = d.change_type
+        letter = "A" if change_type == "A" else "D" if change_type == "D" else "M"
+        staged_list.append({"path": d.a_path, "status": letter, "staged": True})
+
+      for d in unstaged_diffs:
+        if d.a_path not in self.staged_paths:
+          change_type = d.change_type
+          letter = "A" if change_type == "A" else "D" if change_type == "D" else "M"
+          unstaged_list.append({"path": d.a_path, "status": letter, "staged": False})
+
+      self.unstaged_paths = {s["path"] for s in unstaged_list}
+      
+      for p in repo.untracked_files:
+        untracked_list.append({"path": p, "status": "??", "staged": False})
+      
+      self.untracked_paths = set(repo.untracked_files)
+    except Exception:
+      pass
+
+    # Commits
+    commits = []
+    if repo.head.is_valid():
+      try:
+        for c in repo.iter_commits(max_count=15):
+          short_hash = c.hexsha[:7] if len(c.hexsha) >= 7 else c.hexsha
+          msg = (c.message or "").split("\n")[0].strip()
+          time_str = c.committed_datetime.strftime("%Y-%m-%d %H:%M")
+          commits.append({"hash": short_hash, "full_hash": c.hexsha, "message": msg, "time": time_str})
+      except Exception:
+        pass
 
     result.extend(self._build_category(
       cat_id="branches",
@@ -180,24 +228,21 @@ class GitTree(GenericTree):
   def get_node_buttons(self, node_id, is_expandable) -> list:
     btns = []
     if node_id == ("cat", "staged"):
-      staged_list = [s for s in git_viewer.get_status(_get_working_dir()) if s["staged"]]
-      all_selected = bool(staged_list) and all(s["path"] in self._selected_for_action for s in staged_list)
+      all_selected = bool(self.staged_paths) and self.staged_paths.issubset(self._selected_for_action)
       icon = CLEAR_SELECTION if all_selected else SELECT_ALL
       action = "clear_selection" if all_selected else "select_all_staged"
       tooltip = "Clear selection" if all_selected else "Select all staged"
       btns.append(self._make_btn(icon, tooltip, action))
       return btns
     if node_id == ("cat", "changes"):
-      unstaged_list = [s for s in git_viewer.get_status(_get_working_dir()) if not s["staged"] and s["status"] != "??"]
-      all_selected = bool(unstaged_list) and all(s["path"] in self._selected_for_action for s in unstaged_list)
+      all_selected = bool(self.unstaged_paths) and self.unstaged_paths.issubset(self._selected_for_action)
       icon = CLEAR_SELECTION if all_selected else SELECT_ALL
       action = "clear_selection" if all_selected else "select_all_changes"
       tooltip = "Clear selection" if all_selected else "Select all changes"
       btns.append(self._make_btn(icon, tooltip, action))
       return btns
     if node_id == ("cat", "untracked"):
-      untracked_list = [s for s in git_viewer.get_status(_get_working_dir()) if not s["staged"] and s["status"] == "??"]
-      all_selected = bool(untracked_list) and all(s["path"] in self._selected_for_action for s in untracked_list)
+      all_selected = bool(self.untracked_paths) and self.untracked_paths.issubset(self._selected_for_action)
       icon = CLEAR_SELECTION if all_selected else SELECT_ALL
       action = "clear_selection" if all_selected else "select_all_untracked"
       tooltip = "Clear selection" if all_selected else "Select all untracked"
@@ -230,6 +275,11 @@ class GitTree(GenericTree):
 
   def on_button_action(self, node_id: Any, action: str) -> None:
     wd = _get_working_dir()
+    try:
+      repo = git.Repo(wd)
+    except git.exc.InvalidGitRepositoryError:
+      return
+
     if action == "toggle_select" and isinstance(node_id, dict) and node_id.get("type") == "change":
       path = node_id.get("path", "")
       if path in self._selected_for_action:
@@ -241,38 +291,34 @@ class GitTree(GenericTree):
       return
     if action == "stage_file" and isinstance(node_id, dict) and node_id.get("type") == "change":
       path = node_id["path"]
-      if git_viewer.stage(wd, path):
+      try:
+        repo.index.add([path])
         self.app.notify(f"Staged {path}")
         self.reload()
-      else:
+      except Exception:
         self.app.notify(f"Failed to stage {path}", severity="error")
       return
     if action == "unstage_file" and isinstance(node_id, dict) and node_id.get("type") == "change":
       path = node_id["path"]
-      if git_viewer.unstage(wd, path):
+      try:
+        repo.head.reset(paths=[path])
         self.app.notify(f"Unstaged {path}")
         self.reload()
-      else:
+      except Exception:
         self.app.notify(f"Failed to unstage {path}", severity="error")
       return
     if action == "select_all_staged":
-      for s in git_viewer.get_status(wd):
-        if s["staged"]:
-          self._selected_for_action.add(s["path"])
+      self._selected_for_action.update(self.staged_paths)
       self.reload()
       self.post_message(SelectionChanged())
       return
     if action == "select_all_changes":
-      for s in git_viewer.get_status(wd):
-        if not s["staged"] and s["status"] != "??":
-          self._selected_for_action.add(s["path"])
+      self._selected_for_action.update(self.unstaged_paths)
       self.reload()
       self.post_message(SelectionChanged())
       return
     if action == "select_all_untracked":
-      for s in git_viewer.get_status(wd):
-        if not s["staged"] and s["status"] == "??":
-          self._selected_for_action.add(s["path"])
+      self._selected_for_action.update(self.untracked_paths)
       self.reload()
       self.post_message(SelectionChanged())
       return
@@ -285,22 +331,27 @@ class GitTree(GenericTree):
       path = node_id["path"]
 
       def cb(ok: bool | None) -> None:
-        if ok and git_viewer.discard(wd, path):
-          self._selected_for_action.discard(path)
-          self.app.notify("Discarded")
-          self.reload()
-          self.post_message(SelectionChanged())
-        elif ok:
-          self.app.notify("Discard failed", severity="error")
+        if ok:
+          try:
+            repo.head.reset(paths=[path])
+            repo.index.checkout(paths=[path], force=True)
+            self._selected_for_action.discard(path)
+            self.app.notify("Discarded")
+            self.reload()
+            self.post_message(SelectionChanged())
+          except Exception:
+            self.app.notify("Discard failed", severity="error")
 
       self.app.push_screen(InputModal(f"Discard changes in {path}?", confirm_only=True), cb)
       return
     if action == "add_to_gitignore" and isinstance(node_id, dict) and node_id.get("type") == "change":
       path = node_id["path"]
-      if git_viewer.add_to_gitignore(wd, path):
+      try:
+        with open(Path(wd) / ".gitignore", "a") as f:
+          f.write(f"\n{path}\n")
         self.app.notify(f"Added {path} to .gitignore")
         self.reload()
-      else:
+      except OSError:
         self.app.notify("Failed to add to .gitignore", severity="error")
       return
     if action == "cherry_pick" and isinstance(node_id, dict) and node_id.get("type") == "commit":
@@ -308,11 +359,13 @@ class GitTree(GenericTree):
       short = node_id.get("short", commit_hash[:7])
 
       def cb(ok: bool | None) -> None:
-        if ok and git_viewer.cherry_pick(wd, commit_hash):
-          self.app.notify("Cherry-picked")
-          self.reload()
-        elif ok:
-          self.app.notify("Cherry-pick failed (conflicts?)", severity="error")
+        if ok:
+          try:
+            repo.git.cherry_pick(commit_hash)
+            self.app.notify("Cherry-picked")
+            self.reload()
+          except git.exc.GitCommandError:
+            self.app.notify("Cherry-pick failed (conflicts?)", severity="error")
 
       self.app.push_screen(InputModal(f"Cherry-pick {short}?", confirm_only=True), cb)
       return
@@ -322,10 +375,11 @@ class GitTree(GenericTree):
 
       def cb(name: str | None) -> None:
         if name and name.strip():
-          if git_viewer.create_branch(wd, name.strip(), from_commit=commit_hash):
+          try:
+            repo.create_head(name.strip(), commit=commit_hash)
             self.app.notify(f"Created branch {name.strip()}")
             self.reload()
-          else:
+          except Exception:
             self.app.notify("Create branch failed", severity="error")
 
       self.app.push_screen(InputModal(f"Branch name from {short}", initial_value=""), cb)
@@ -335,11 +389,12 @@ class GitTree(GenericTree):
       if node_id.get("is_current"):
         self.app.notify(f"Already on {name}", severity="information")
         return
-      success, err_msg = git_viewer.checkout_branch(wd, name)
-      if success:
+      try:
+        repo.heads[name].checkout()
         self.app.notify(f"Switched to {name}")
         self.reload()
-      else:
+      except Exception as e:
+        err_msg = getattr(e, "stderr", str(e)).strip()
         self.app.notify(f"Checkout failed: {err_msg}", severity="error")
       return
     if action == "delete_branch" and isinstance(node_id, dict) and node_id.get("type") == "branch":
@@ -348,11 +403,13 @@ class GitTree(GenericTree):
         self.app.notify(f"Cannot delete current branch {name}", severity="error")
         return
       def cb_delete(ok: bool | None) -> None:
-        if ok and git_viewer.delete_branch(wd, name, force=True):
-          self.app.notify(f"Deleted branch {name}")
-          self.reload()
-        elif ok:
-          self.app.notify(f"Failed to delete branch {name}", severity="error")
+        if ok:
+          try:
+            repo.delete_head(name, force=True)
+            self.app.notify(f"Deleted branch {name}")
+            self.reload()
+          except Exception:
+            self.app.notify(f"Failed to delete branch {name}", severity="error")
 
       self.app.push_screen(InputModal(f"Delete branch {name}?", confirm_only=True), cb_delete)
       return

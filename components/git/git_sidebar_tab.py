@@ -1,4 +1,5 @@
 """Git viewer sidebar tab."""
+import git
 from textual.app import ComposeResult
 from textual.containers import Vertical, Horizontal, VerticalScroll
 from textual.widgets import Button, Label
@@ -9,7 +10,6 @@ from components.input_modal import InputModal
 from components.git.diff_modal import DiffModal
 from components.git.git_tree import GitTree, SelectionChanged, _get_working_dir
 from utils.agent import TaskAgent
-from utils import git_viewer
 
 COMMIT_MSG_PROMPT = """You generate conventional git commit messages. Output only the message, no preamble.
 Format: type(scope): subject. Types: feat, fix, docs, style, refactor, test, chore.
@@ -84,17 +84,26 @@ class GitSidebarTab(Vertical):
   @on(Button.Pressed, "#btn_git_commit")
   def on_commit(self) -> None:
     wd = _get_working_dir()
-    if not git_viewer.get_branches(wd):
+    try:
+      repo = git.Repo(wd)
+    except git.exc.InvalidGitRepositoryError:
       self.app.notify("Not a git repository", severity="warning")
       return
-    self.run_worker(self._generate_and_show_commit_modal(wd))
+    self.run_worker(self._generate_and_show_commit_modal(repo))
 
-  async def _generate_and_show_commit_modal(self, wd: str) -> None:
+  async def _generate_and_show_commit_modal(self, repo: git.Repo) -> None:
     if self.selected_for_action:
-      for path in self.selected_for_action:
-        git_viewer.stage(wd, path)
-    diff = git_viewer.get_diff(wd, staged=True)
-    if not diff or diff == "(no changes)":
+      try:
+        repo.index.add(list(self.selected_for_action))
+      except Exception:
+        pass
+    
+    try:
+      diff = repo.git.diff("--cached")
+    except git.exc.GitCommandError:
+      diff = ""
+      
+    if not diff:
       self.app.notify("Nothing staged to commit", severity="warning")
       return
     self.app.notify("Generating commit message...", severity="information")
@@ -104,12 +113,13 @@ class GitSidebarTab(Vertical):
 
     def do_commit(m: str | None) -> None:
       if m and m.strip():
-        if git_viewer.commit(wd, m.strip()):
+        try:
+          repo.index.commit(m.strip())
           self.app.notify("Committed")
           self.selected_for_action.clear()
           self._refresh_tree()
           self._update_label()
-        else:
+        except Exception:
           self.app.notify("Nothing to commit or commit failed", severity="warning")
 
     self.app.push_screen(InputModal("Commit message", initial_value=initial, multiline=True), do_commit)
@@ -117,55 +127,68 @@ class GitSidebarTab(Vertical):
   @on(Button.Pressed, "#btn_git_stage")
   def on_stage(self) -> None:
     wd = _get_working_dir()
+    try:
+      repo = git.Repo(wd)
+    except git.exc.InvalidGitRepositoryError:
+      return
+
     if self.selected_for_action:
-      ok = True
-      for path in self.selected_for_action:
-        if not git_viewer.stage(wd, path):
-          ok = False
-      if ok:
+      try:
+        repo.index.add(list(self.selected_for_action))
         n = len(self.selected_for_action)
         self.app.notify(f"Staged {n} file(s)")
         self._refresh_tree()
-      else:
+      except Exception:
         self.app.notify("Stage failed", severity="error")
       return
+    
     data = self.selected_node_data
     if data and data.get("type") == "change":
       path = data["path"]
-      if git_viewer.stage(wd, path):
+      try:
+        repo.index.add([path])
         self.app.notify(f"Staged {path}")
         self._refresh_tree()
-      else:
+      except Exception:
         self.app.notify("Stage failed", severity="error")
     else:
-      if git_viewer.stage(wd, None):
+      try:
+        if repo.untracked_files:
+          repo.index.add(repo.untracked_files)
+        diffs = [item.a_path for item in repo.index.diff(None)]
+        if diffs:
+          repo.index.add(diffs)
         self.app.notify("Staged all")
         self._refresh_tree()
-      else:
+      except Exception:
         self.app.notify("Stage failed", severity="error")
 
   @on(Button.Pressed, "#btn_git_unstage")
   def on_unstage(self) -> None:
     wd = _get_working_dir()
+    try:
+      repo = git.Repo(wd)
+    except git.exc.InvalidGitRepositoryError:
+      return
+
     if self.selected_for_action:
-      ok = True
-      for path in self.selected_for_action:
-        if not git_viewer.unstage(wd, path):
-          ok = False
-      if ok:
+      try:
+        repo.head.reset(paths=list(self.selected_for_action))
         n = len(self.selected_for_action)
         self.app.notify(f"Unstaged {n} file(s)")
         self._refresh_tree()
-      else:
+      except Exception:
         self.app.notify("Unstage failed", severity="error")
       return
+    
     data = self.selected_node_data
     if data and data.get("type") == "change" and data.get("staged"):
       path = data["path"]
-      if git_viewer.unstage(wd, path):
+      try:
+        repo.head.reset(paths=[path])
         self.app.notify(f"Unstaged {path}")
         self._refresh_tree()
-      else:
+      except Exception:
         self.app.notify("Unstage failed", severity="error")
     else:
       self.app.notify("Select a staged file to unstage", severity="warning")
@@ -174,16 +197,22 @@ class GitSidebarTab(Vertical):
   def on_checkout(self) -> None:
     data = self.selected_node_data
     wd = _get_working_dir()
+    try:
+      repo = git.Repo(wd)
+    except git.exc.InvalidGitRepositoryError:
+      return
+
     if data and data.get("type") == "branch":
       name = data["name"]
       if data.get("is_current"):
         self.app.notify(f"Already on {name}", severity="information")
         return
-      success, err_msg = git_viewer.checkout_branch(wd, name)
-      if success:
+      try:
+        repo.heads[name].checkout()
         self.app.notify(f"Switched to {name}")
         self._refresh_tree()
-      else:
+      except Exception as e:
+        err_msg = getattr(e, "stderr", str(e)).strip()
         self.app.notify(f"Checkout failed: {err_msg}", severity="error")
     else:
       self.app.notify("Select a branch to checkout", severity="warning")
@@ -191,6 +220,11 @@ class GitSidebarTab(Vertical):
   def _handle_show_diff(self) -> None:
     data = self.selected_node_data
     wd = _get_working_dir()
+    try:
+      repo = git.Repo(wd)
+    except git.exc.InvalidGitRepositoryError:
+      return
+
     if not data:
       self.app.notify("Select a file or commit to view diff", severity="warning")
       return
@@ -198,11 +232,22 @@ class GitSidebarTab(Vertical):
     if t == "change":
       staged = data.get("staged", False)
       path = data["path"]
-      diff = git_viewer.get_diff(wd, path, staged=staged)
+      try:
+        if staged:
+          diff = repo.git.diff("--cached", "--", path)
+        else:
+          diff = repo.git.diff("--", path)
+        diff = diff or "(no changes)"
+      except git.exc.GitCommandError as e:
+        diff = str(e)
       title = f"Diff: {path} ({'staged' if staged else 'unstaged'})"
       self._show_diff(title, diff, file_path=path)
     elif t == "commit":
-      diff = git_viewer.get_commit_diff(wd, data["hash"])
+      try:
+        diff = repo.git.show(data["hash"])
+        diff = diff or "(empty)"
+      except git.exc.GitCommandError as e:
+        diff = str(e)
       title = f"Commit {data['short']}: {data['message'][:30]}"
       self._show_diff(title, diff)
     else:
