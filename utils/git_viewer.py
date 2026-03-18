@@ -153,16 +153,20 @@ def commit(path: str, message: str) -> bool:
     return False
 
 
-def checkout_branch(path: str, branch_name: str) -> bool:
-  """Checkout branch by name."""
+def checkout_branch(path: str, branch_name: str) -> tuple[bool, str]:
+  """Checkout branch by name. Returns (success, error_message)."""
   repo = _get_repo(path)
   if not repo:
-    return False
+    return False, "Not a git repository"
   try:
     repo.heads[branch_name].checkout()
-    return True
-  except (GitCommandError, IndexError):
-    return False
+    return True, ""
+  except GitCommandError as e:
+    # Extract just the stderr part of the GitCommandError for a cleaner message
+    err_msg = e.stderr.strip() if e.stderr else str(e)
+    return False, err_msg
+  except IndexError:
+    return False, f"Branch '{branch_name}' not found"
 
 
 def discard(path: str, file_path: str) -> bool:
@@ -212,6 +216,21 @@ def create_branch(path: str, branch_name: str, from_commit: str | None = None) -
       repo.git.branch(branch_name, from_commit)
     else:
       repo.git.branch(branch_name)
+    return True
+  except GitCommandError:
+    return False
+
+
+def delete_branch(path: str, branch_name: str, force: bool = False) -> bool:
+  """Delete a local branch."""
+  repo = _get_repo(path)
+  if not repo:
+    return False
+  try:
+    if force:
+      repo.git.branch("-D", branch_name)
+    else:
+      repo.git.branch("-d", branch_name)
     return True
   except GitCommandError:
     return False

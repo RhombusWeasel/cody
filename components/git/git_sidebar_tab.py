@@ -15,7 +15,7 @@ from utils.agent import TaskAgent
 from utils.cfg_man import cfg
 from utils import git_viewer
 from utils.tree_model import TreeEntry
-from utils.icons import GIT_ICON_SET, CHECKED, UNCHECKED, SELECT_ALL, CLEAR_SELECTION, GIT_DISCARD, GIT_IGNORE, GIT_CHERRY_PICK, GIT_BRANCH
+from utils.icons import GIT_ICON_SET, CHECKED, UNCHECKED, SELECT_ALL, CLEAR_SELECTION, GIT_DISCARD, GIT_IGNORE, GIT_CHERRY_PICK, GIT_BRANCH, RUN, DELETE
 
 COMMIT_MSG_PROMPT = """You generate conventional git commit messages. Output only the message, no preamble.
 Format: type(scope): subject. Types: feat, fix, docs, style, refactor, test, chore.
@@ -220,6 +220,10 @@ class GitTree(GenericTree):
       btns.append(self._make_btn(GIT_CHERRY_PICK, "Cherry-pick", "cherry_pick"))
       btns.append(self._make_btn(GIT_BRANCH, "Create branch", "create_branch"))
       return btns
+    if isinstance(node_id, dict) and node_id.get("type") == "branch":
+      btns.append(self._make_btn(RUN, "Switch to branch", "checkout_branch_btn"))
+      btns.append(self._make_btn(DELETE, "Delete branch", "delete_branch"))
+      return btns
     return []
 
   def on_button_action(self, node_id: Any, action: str) -> None:
@@ -300,6 +304,33 @@ class GitTree(GenericTree):
             self.app.notify("Create branch failed", severity="error")
 
       self.app.push_screen(InputModal(f"Branch name from {short}", initial_value=""), cb)
+      return
+    if action == "checkout_branch_btn" and isinstance(node_id, dict) and node_id.get("type") == "branch":
+      name = node_id["name"]
+      if node_id.get("is_current"):
+        self.app.notify(f"Already on {name}", severity="information")
+        return
+      success, err_msg = git_viewer.checkout_branch(wd, name)
+      if success:
+        self.app.notify(f"Switched to {name}")
+        self.reload()
+      else:
+        self.app.notify(f"Checkout failed: {err_msg}", severity="error")
+      return
+    if action == "delete_branch" and isinstance(node_id, dict) and node_id.get("type") == "branch":
+      name = node_id["name"]
+      if node_id.get("is_current"):
+        self.app.notify(f"Cannot delete current branch {name}", severity="error")
+        return
+      def cb_delete(ok: bool | None) -> None:
+        if ok and git_viewer.delete_branch(wd, name, force=True):
+          self.app.notify(f"Deleted branch {name}")
+          self.reload()
+        elif ok:
+          self.app.notify(f"Failed to delete branch {name}", severity="error")
+
+      self.app.push_screen(InputModal(f"Delete branch {name}?", confirm_only=True), cb_delete)
+      return
 
 
 class GitSidebarTab(Vertical):
@@ -495,11 +526,12 @@ class GitSidebarTab(Vertical):
       if data.get("is_current"):
         self.app.notify(f"Already on {name}", severity="information")
         return
-      if git_viewer.checkout_branch(wd, name):
+      success, err_msg = git_viewer.checkout_branch(wd, name)
+      if success:
         self.app.notify(f"Switched to {name}")
         self._refresh_tree()
       else:
-        self.app.notify("Checkout failed", severity="error")
+        self.app.notify(f"Checkout failed: {err_msg}", severity="error")
     else:
       self.app.notify("Select a branch to checkout", severity="warning")
 
