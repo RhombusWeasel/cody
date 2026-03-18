@@ -1,0 +1,20 @@
+TabbedContent .--content-tab {
+  color: $primary;
+}
+
+GenericTree, DBTree {
+  height: auto;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar-tabbed-content {
+  height: 1fr;
+  min-height: 0;
+  width: 100%;
+}
+
+TabbedContent ContentSwitcher {
+  height: 1fr;
+  min-height: 0;
+}

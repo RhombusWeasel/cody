@@ -17,37 +17,7 @@ Keep subject under 50 chars. Add a blank line and body for context if helpful.""
 
 
 class GitSidebarTab(Vertical):
-  DEFAULT_CSS = """
-  GitSidebarTab {
-    height: 100%;
-    width: 100%;
-  }
 
-  #git_buttons {
-    height: auto;
-    width: 100%;
-    margin-bottom: 1;
-  }
-
-  #git_tree_container {
-    height: 1fr;
-  }
-
-  .git-icon-btn {
-    min-width: 5;
-    width: auto;
-    height: 1;
-    border: round $secondary;
-    background: $secondary;
-  }
-
-  #git_selected_label {
-    text-style: bold;
-    margin-bottom: 1;
-    color: $success;
-    height: auto;
-  }
-  """
 
   def __init__(self, **kwargs):
     super().__init__(**kwargs)

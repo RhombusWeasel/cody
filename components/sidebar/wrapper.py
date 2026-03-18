@@ -12,28 +12,6 @@ from utils.cfg_man import cfg
 from utils.skill_components import discover_sidebar_tabs
 import utils.icons as icons
 
-CSS = """
-TabbedContent .--content-tab {
-  color: $primary;
-}
-
-GenericTree, DBTree {
-  height: auto;
-  margin: 0;
-  padding: 0;
-}
-
-.sidebar-tabbed-content {
-  height: 1fr;
-  min-height: 0;
-  width: 100%;
-}
-
-TabbedContent ContentSwitcher {
-  height: 1fr;
-  min-height: 0;
-}
-"""
 
 TAB_TOOLTIPS = {
   "tab-chats": "Chat History",
@@ -46,7 +24,6 @@ TAB_TOOLTIPS = {
 
 class Sidebar(VerticalScroll):
     
-    DEFAULT_CSS = CSS
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.visible = cfg.get('interface.sidebar_open_on_start')

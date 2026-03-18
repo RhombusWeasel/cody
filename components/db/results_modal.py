@@ -10,56 +10,7 @@ from components.input_modal import InputModal
 from utils.icons import EXPORT_CSV
 
 class ResultsModal(ModalScreen):
-  DEFAULT_CSS = """
-  ResultsModal {
-    align: center middle;
-  }
 
-  #results_modal_container {
-    width: 90%;
-    height: 90%;
-    background: $panel;
-    border: round $primary;
-    padding: 1;
-  }
-
-  #results_modal_header {
-    height: auto;
-    width: 100%;
-    align: left middle;
-    margin-bottom: 1;
-  }
-
-  #results_modal_header Label {
-    width: 1fr;
-    content-align: left middle;
-  }
-
-  .icon-btn {
-    min-width: 5;
-    width: 5;
-    height: 3;
-    border: round $primary;
-    background: $surface;
-  }
-
-  #results_modal_table {
-    height: 1fr;
-    margin-top: 1;
-    margin-bottom: 1;
-  }
-
-  .modal-button-container {
-    height: 3;
-    width: 100%;
-    align: center middle;
-  }
-
-  .modal-button {
-    height: 1;
-    width: 50%;
-  }
-  """
 
   def __init__(self, title: str, columns: list, rows: list, working_directory: str = "."):
     super().__init__()

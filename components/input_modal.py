@@ -5,32 +5,7 @@ from textual.screen import ModalScreen
 from textual import on
 
 class InputModal(ModalScreen):
-    DEFAULT_CSS = """
-    InputModal {
-      align: center middle;
-    }
 
-    #input_modal_container {
-      width: 50%;
-      height: auto;
-      background: $panel;
-      border: round $primary;
-      padding: 0;
-    }
-
-    .modal-button-container {
-      height: 3;
-      width: 100%;
-      align: center middle;
-      margin-top: 1;
-      border: round $primary;
-    }
-
-    .modal-button {
-      height: 1;
-      width: 50%;
-    }
-    """
 
     def __init__(self, title: str, initial_value: str = "", multiline: bool = False, language: str | None = None, code_editor: bool = False, confirm_only: bool = False):
         super().__init__()

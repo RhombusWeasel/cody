@@ -105,16 +105,6 @@ class FileTree(GenericTree):
 class FileTreeTab(Vertical):
   """Tab containing the file tree."""
 
-  DEFAULT_CSS = """
-  FileTreeTab {
-    height: 100%;
-    width: 100%;
-  }
-
-  #fs_tree_container {
-    height: 1fr;
-  }
-  """
 
   def compose(self) -> ComposeResult:
     working_dir = Path(cfg.get("session.working_directory", "."))

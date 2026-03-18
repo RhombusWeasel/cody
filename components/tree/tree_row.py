@@ -31,31 +31,6 @@ class NodeSelected(Message, bubble=True):
 class TreeRow(Widget):
   """Single row: indent + expand icon + node icon + label + buttons."""
 
-  DEFAULT_CSS = """
-  TreeRow {
-    height: 1;
-    width: 100%;
-  }
-  TreeRow:hover {
-    background: $surface-lighten-2;
-  }
-
-  TreeRow .tree-indent {
-    width: auto;
-  }
-
-  TreeRow .tree-label {
-    width: 1fr;
-  }
-
-  TreeRow .tree-node-btn {
-    min-width: 3;
-    height: 2;
-    padding: 0 1;
-    color: $primary-lighten-2;
-    align: right middle;
-  }
-  """
 
   def __init__(
     self,

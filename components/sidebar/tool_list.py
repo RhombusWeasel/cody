@@ -98,29 +98,8 @@ class SkillsTree(GenericTree):
     return []
 
 
-CSS = """
-ToolList {
-  height: auto;
-  margin: 0;
-  padding: 0;
-}
-
-#add_skill_btn {
-  width: 100%;
-  margin-top: 1;
-}
-
-.header {
-  text-style: bold;
-  width: 100%;
-  color: $primary;
-  text-align: center;
-}
-"""
-
 
 class ToolList(Container):
-  DEFAULT_CSS = CSS
 
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)

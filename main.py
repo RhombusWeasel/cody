@@ -77,7 +77,22 @@ class TuiApp(App):
     ('ctrl+w', 'close_chat_tab', 'Close Chat Tab'),
     ('ctrl+n', 'new_chat_tab', 'New Chat Tab'),
   ]
-  CSS_PATH = 'app.css'
+  CSS_PATH = [
+    'app.css',
+    'components/input_modal.css',
+    'components/sidebar/settings.css',
+    'components/sidebar/chat_history.css',
+    'components/sidebar/tool_list.css',
+    'components/sidebar/wrapper.css',
+    'components/chat/chat.css',
+    'components/db/results_modal.css',
+    'components/db/db_sidebar_tab.css',
+    'components/fs/file_tree.css',
+    'components/git/diff_modal.css',
+    'components/git/git_sidebar_tab.css',
+    'components/tree/tree_row.css',
+    'components/tree/generic_tree.css'
+  ]
 
   async def on_mount(self):
     self.register_theme(haxor_theme)

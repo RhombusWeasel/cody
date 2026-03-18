@@ -1,0 +1,84 @@
+Collapsible:focus {
+    background: $panel-lighten-1;
+  }
+  Collapsible:hover {
+    background: $panel-lighten-1;
+  }
+
+  SettingsMenu {
+    height: 100%;
+    width: 100%;
+  }
+
+  .setting-item {
+    height: auto;
+    padding: 0;
+  }
+
+  .setting-item-label {
+    max-width: 50%;
+    width: 1fr;
+    content-align: left middle;
+    text-align: left;
+  }
+
+  .setting-item-input {
+    max-width: 60%;
+    height: 1;
+    border: none;
+    background: $panel;
+  }
+
+  .setting-item-input:focus {
+    border: none;
+  }
+
+  .setting-item-text-area {
+    width: 100%;
+    height: 10;
+    border: none;
+  }
+
+  .setting-item-switch {
+    width: 50%;
+    border: none;
+  }
+
+  .setting-item-switch:focus {
+    width: 50%;
+    border: none;
+  }
+
+  .setting-item-text-area:focus {
+    border: none;
+  }
+
+  .setting-list-row {
+    height: auto;
+    margin-bottom: 0;
+    align: left middle;
+  }
+
+  .setting-list-input {
+    width: 1fr;
+    height: 1;
+    border: none;
+  }
+
+  .setting-list-del-btn {
+    height: 1;
+    max-width: 3;
+    min-width: 0;
+    border: none;
+    content-align: center middle;
+    text-align: center;
+  }
+
+  .setting-list-add-btn {
+    height: 1;
+    width: 100%;
+    border: none;
+    content-align: center middle;
+    text-align: center;
+    margin-top: 1;
+  }

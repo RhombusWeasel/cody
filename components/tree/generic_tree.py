@@ -14,15 +14,6 @@ from utils.icons import DEFAULT_ICON_SET, FILE
 class GenericTree(Vertical):
   """Flat tree - single Vertical with one row per entry. Subclass and override."""
 
-  DEFAULT_CSS = """
-  GenericTree {
-    height: auto;
-  }
-
-  GenericTree #tree_rows {
-    height: auto;
-  }
-  """
 
   BRANCH = "├── "
   LAST_BRANCH = "└── "
