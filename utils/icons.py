@@ -46,6 +46,7 @@ GIT_UNSTAGE = ""  # nf-fa-minus
 GIT_MERGE = ""  # nf-cod-git_merge
 GIT_STASH = ""  # nf-fa-inbox
 GIT_REVERT = ""  # nf-fa-undo
+GIT_POP_STASH = ""  # nf-fa-arrow-up
 
 # Database tree
 DB_TABLE = ""  # nf-fa-table

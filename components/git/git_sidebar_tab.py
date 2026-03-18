@@ -1,7 +1,7 @@
 """Git viewer sidebar tab."""
 import git
 from textual.app import ComposeResult
-from textual.containers import Vertical, Horizontal, VerticalScroll
+from textual.containers import Vertical, Grid, VerticalScroll
 from textual.widgets import Button, Label
 from textual import on
 
@@ -11,6 +11,10 @@ from components.git.diff_modal import DiffModal
 from components.git.git_tree import GitTree, SelectionChanged, _get_working_dir
 from utils.agent import TaskAgent
 from utils.git import stage_all, create_stash, pop_stash
+from utils.icons import (
+  GIT, REFRESH, GIT_COMMIT, GIT_ADD, GIT_UNSTAGE, RUN,
+  GIT_STASH, GIT_POP_STASH,
+)
 
 COMMIT_MSG_PROMPT = """You generate conventional git commit messages. Output only the message, no preamble.
 Format: type(scope): subject. Types: feat, fix, docs, style, refactor, test, chore.
@@ -26,24 +30,25 @@ class GitSidebarTab(Vertical):
     self.selected_for_action: set[str] = set()
 
   def compose(self) -> ComposeResult:
-    with Horizontal(id="git_buttons"):
-      yield Button("Refresh", id="btn_git_refresh", variant="primary")
-      yield Button("Commit", id="btn_git_commit", classes="git-icon-btn")
-      yield Button("Stage", id="btn_git_stage", classes="git-icon-btn")
-      yield Button("Unstage", id="btn_git_unstage", classes="git-icon-btn")
-      yield Button("Checkout", id="btn_git_checkout", classes="git-icon-btn")
-      yield Button("Stash", id="btn_git_stash", classes="git-icon-btn")
-      yield Button("Pop Stash", id="btn_git_pop_stash", classes="git-icon-btn")
+    yield Label(f"{GIT} Git Manager", id="git_tab_title")
+    with Grid(id="git_buttons"):
+      yield Button(REFRESH, id="btn_git_refresh", classes="git-icon-btn")
+      yield Button(GIT_COMMIT, id="btn_git_commit", classes="git-icon-btn")
+      yield Button(GIT_ADD, id="btn_git_stage", classes="git-icon-btn")
+      yield Button(GIT_UNSTAGE, id="btn_git_unstage", classes="git-icon-btn")
+      yield Button(RUN, id="btn_git_checkout", classes="git-icon-btn")
+      yield Button(GIT_STASH, id="btn_git_stash", classes="git-icon-btn")
+      yield Button(GIT_POP_STASH, id="btn_git_pop_stash", classes="git-icon-btn")
     with VerticalScroll(id="git_tree_container"):
       yield Label("Select an item", id="git_selected_label", markup=False)
       yield GitTree(id="git_tree", selected_for_action=self.selected_for_action)
 
   def on_mount(self) -> None:
     self.query_one("#btn_git_refresh").tooltip = "Refresh"
-    self.query_one("#btn_git_commit").tooltip = "Commit staged"
-    self.query_one("#btn_git_stage").tooltip = "Stage selected"
+    self.query_one("#btn_git_commit").tooltip = "AI commit staged"
+    self.query_one("#btn_git_stage").tooltip = "Stage selected / all"
     self.query_one("#btn_git_unstage").tooltip = "Unstage selected"
-    self.query_one("#btn_git_checkout").tooltip = "Checkout branch"
+    self.query_one("#btn_git_checkout").tooltip = "Checkout selected branch"
     self.query_one("#btn_git_stash").tooltip = "Stash all changes"
     self.query_one("#btn_git_pop_stash").tooltip = "Pop latest stash"
 
