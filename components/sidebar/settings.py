@@ -59,7 +59,7 @@ class SettingsMenu(VerticalScroll):
                     classes="setting-item"
                 ))
             else:
-                is_password = "password" in key.lower() or "token" in key.lower()
+                is_password = "password" in key.lower() or "token" in key.lower() or "api_key" in key.lower()
                 widgets.append(Horizontal(
                     Label(key, classes="setting-item-label"),
                     Input(value=str(val), password=is_password, id=f"setting_{current_path.replace('.', '__')}", classes="setting-item-input"),

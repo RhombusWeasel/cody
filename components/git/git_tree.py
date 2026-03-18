@@ -25,6 +25,13 @@ class GitTree(GenericTree):
   def __init__(self, selected_for_action: set[str] | None = None, **kwargs):
     self._selected_for_action = selected_for_action or set()
     super().__init__(icon_set=GIT_ICON_SET, **kwargs)
+    self._expanded.update([
+      ("cat", "branches"),
+      ("cat", "staged"),
+      ("cat", "changes"),
+      ("cat", "untracked"),
+      ("cat", "commits")
+    ])
 
   def _build_category(
     self,
@@ -37,7 +44,6 @@ class GitTree(GenericTree):
     item_formatter: Callable[[Any], tuple[dict, str]]
   ) -> list[TreeEntry]:
     result: list[TreeEntry] = []
-    self._expanded.add(("cat", cat_id))
 
     cat_indent = self.LAST_BRANCH if is_last_category else self.BRANCH
     child_indent_prefix = self.SPACER if is_last_category else self.VERTICAL
