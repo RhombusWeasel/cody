@@ -163,3 +163,55 @@ def checkout_branch(path: str, branch_name: str) -> bool:
     return True
   except (GitCommandError, IndexError):
     return False
+
+
+def discard(path: str, file_path: str) -> bool:
+  """Discard changes in working tree for file. Unstages if staged, restores from index/HEAD."""
+  repo = _get_repo(path)
+  if not repo:
+    return False
+  try:
+    repo.git.checkout("--", file_path)
+    repo.git.reset("HEAD", file_path)
+    return True
+  except GitCommandError:
+    return False
+
+
+def add_to_gitignore(repo_path: str, entry: str) -> bool:
+  """Append path to .gitignore."""
+  from pathlib import Path
+  gitignore = Path(repo_path) / ".gitignore"
+  try:
+    with open(gitignore, "a") as f:
+      f.write(f"\n{entry}\n")
+    return True
+  except OSError:
+    return False
+
+
+def cherry_pick(path: str, commit_hash: str) -> bool:
+  """Cherry-pick commit onto current branch."""
+  repo = _get_repo(path)
+  if not repo:
+    return False
+  try:
+    repo.git.cherry_pick(commit_hash)
+    return True
+  except GitCommandError:
+    return False
+
+
+def create_branch(path: str, branch_name: str, from_commit: str | None = None) -> bool:
+  """Create branch, optionally from specific commit. Does not checkout."""
+  repo = _get_repo(path)
+  if not repo:
+    return False
+  try:
+    if from_commit:
+      repo.git.branch(branch_name, from_commit)
+    else:
+      repo.git.branch(branch_name)
+    return True
+  except GitCommandError:
+    return False

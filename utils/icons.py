@@ -1,40 +1,45 @@
 """Nerd Font icon codepoints for consistent UI across components."""
 
 # Sidebar Headers
-CHATS = "\uea82"
-FILE_SYSTEM = "\uea83"
-GIT = "\ue5fb"
-SKILLS = "\uf19d"
-DB = "\uf472"
-SETTINGS = "\ue690"
+CHATS = ""
+FILE_SYSTEM = ""
+GIT = ""
+DB = ""
+SKILLS = ""
+SETTINGS = ""
 
 # Selection
-CHECKED = "\u2611"  # ballot box with check
-UNCHECKED = "\u2610"  # ballot box
+CHECKED = "󰄲"
+UNCHECKED = ""
+SELECT_ALL = "󰄸"
+CLEAR_SELECTION = "󰄷"
 
 # Actions
-DELETE = "\uEA81"  # nf-cod-trash
-EDIT = "\uEA73"  # nf-cod-edit
-NEW_FILE = "\uEA7F"  # nf-cod-new_file
-NEW_FOLDER = "\uEA80"  # nf-cod-new_folder
-RUN = "\uEB9E"  # nf-cod-run_all
-EXPORT_CSV = "\uE27C"  # nf-fae-file_export
-OPEN_EXTERNAL = "\uEB14"  # nf-cod-link_external
+DELETE = "󰛌"
+EDIT = ""
+NEW_FILE = ""
+NEW_FOLDER = ""
+RUN = ""
+EXPORT_CSV = "󰈇"
+OPEN_EXTERNAL = "󰏌"
 
 # Database
-DATABASE = "\uEACE"  # nf-cod-database
-REFRESH = "\uEC0C"  # nf-cod-refresh
+DATABASE = DB
+REFRESH = ""
 
 # Tree / file browser
-FOLDER = "\uEA83"  # nf-cod-folder
-FILE = "\uEA7B"  # nf-cod-file
-EXPAND_DOWN = "\uEAB4"  # nf-cod-chevron_down
-EXPAND_RIGHT = "\uEAB6"  # nf-cod-chevron_right
+FOLDER = ""  # nf-cod-folder
+FILE = ""  # nf-cod-file
+EXPAND_DOWN = "󰧗"  # nf-cod-chevron_down
+EXPAND_RIGHT = "󰧛"  # nf-cod-chevron_right
 
 # Git tree
-GIT_BRANCH = "\ue725"  # nf-cod-git_branch
-GIT_COMMIT = "\ue729"  # nf-cod-git_commit
-GIT_CHANGE = "\uec0c"  # nf-cod-diff
+GIT_BRANCH = ""  # nf-cod-git_branch
+GIT_COMMIT = ""  # nf-cod-git_commit
+GIT_CHANGE = ""  # nf-cod-diff
+GIT_DISCARD = ""  # nf-cod-discard
+GIT_IGNORE = ""  # nf-cod-file_symlink_file
+GIT_CHERRY_PICK = ""  # nf-fae-cherry
 
 # Database tree
 DB_TABLE = ""  # nf-fa-table
