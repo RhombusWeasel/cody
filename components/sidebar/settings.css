@@ -40,12 +40,14 @@ Collapsible:focus {
   }
 
   .setting-item-switch {
-    width: 50%;
+    width: 20%;
     border: none;
+    padding: 0;
   }
 
   .setting-item-switch:focus {
-    width: 50%;
+    width: 20%;
+    padding: 0;
     border: none;
   }
 
