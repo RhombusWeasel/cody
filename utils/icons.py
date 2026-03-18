@@ -43,6 +43,10 @@ GIT_CHERRY_PICK = ""  # nf-fae-cherry
 GIT_ADD = ""  # nf-fa-plus
 GIT_UNSTAGE = ""  # nf-fa-minus
 
+GIT_MERGE = ""  # nf-cod-git_merge
+GIT_STASH = ""  # nf-fa-inbox
+GIT_REVERT = ""  # nf-fa-undo
+
 # Database tree
 DB_TABLE = ""  # nf-fa-table
 DB_VIEW = "󱤢"  # nf-md-database_eye_outline
@@ -105,6 +109,7 @@ GIT_ICON_SET = {
   "branch": GIT_BRANCH,
   "change": GIT_CHANGE,
   "commit": GIT_COMMIT,
+  "stash": GIT_STASH,
 }
 
 SKILL_ICON_SET = {

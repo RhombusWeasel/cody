@@ -10,7 +10,7 @@ from components.input_modal import InputModal
 from components.git.diff_modal import DiffModal
 from components.git.git_tree import GitTree, SelectionChanged, _get_working_dir
 from utils.agent import TaskAgent
-from utils.git import stage_all
+from utils.git import stage_all, create_stash, pop_stash
 
 COMMIT_MSG_PROMPT = """You generate conventional git commit messages. Output only the message, no preamble.
 Format: type(scope): subject. Types: feat, fix, docs, style, refactor, test, chore.
@@ -32,6 +32,8 @@ class GitSidebarTab(Vertical):
       yield Button("Stage", id="btn_git_stage", classes="git-icon-btn")
       yield Button("Unstage", id="btn_git_unstage", classes="git-icon-btn")
       yield Button("Checkout", id="btn_git_checkout", classes="git-icon-btn")
+      yield Button("Stash", id="btn_git_stash", classes="git-icon-btn")
+      yield Button("Pop Stash", id="btn_git_pop_stash", classes="git-icon-btn")
     with VerticalScroll(id="git_tree_container"):
       yield Label("Select an item", id="git_selected_label", markup=False)
       yield GitTree(id="git_tree", selected_for_action=self.selected_for_action)
@@ -42,6 +44,8 @@ class GitSidebarTab(Vertical):
     self.query_one("#btn_git_stage").tooltip = "Stage selected"
     self.query_one("#btn_git_unstage").tooltip = "Unstage selected"
     self.query_one("#btn_git_checkout").tooltip = "Checkout branch"
+    self.query_one("#btn_git_stash").tooltip = "Stash all changes"
+    self.query_one("#btn_git_pop_stash").tooltip = "Pop latest stash"
 
   def _refresh_tree(self) -> None:
     tree = self.query_one("#git_tree", GitTree)
@@ -213,6 +217,34 @@ class GitSidebarTab(Vertical):
         self.app.notify(f"Checkout failed: {err_msg}", severity="error")
     else:
       self.app.notify("Select a branch to checkout", severity="warning")
+
+  @on(Button.Pressed, "#btn_git_stash")
+  def on_stash(self) -> None:
+    wd = _get_working_dir()
+    try:
+      repo = git.Repo(wd)
+    except git.exc.InvalidGitRepositoryError:
+      self.app.notify("Not a git repository", severity="warning")
+      return
+    if create_stash(repo, "WIP"):
+      self.app.notify("Stashed changes")
+      self._refresh_tree()
+    else:
+      self.app.notify("Nothing to stash", severity="warning")
+
+  @on(Button.Pressed, "#btn_git_pop_stash")
+  def on_pop_stash(self) -> None:
+    wd = _get_working_dir()
+    try:
+      repo = git.Repo(wd)
+    except git.exc.InvalidGitRepositoryError:
+      self.app.notify("Not a git repository", severity="warning")
+      return
+    if pop_stash(repo, 0):
+      self.app.notify("Stash applied")
+      self._refresh_tree()
+    else:
+      self.app.notify("No stash to pop", severity="warning")
 
   def _handle_show_diff(self) -> None:
     data = self.selected_node_data
