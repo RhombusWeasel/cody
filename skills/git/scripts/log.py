@@ -9,6 +9,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from utils.git_viewer import get_commits
+from utils.git import is_git_repo
 
 def main():
   parser = argparse.ArgumentParser(description="Shows recent commit history.")
@@ -17,10 +18,14 @@ def main():
   
   args = parser.parse_args()
   
+  if not is_git_repo(args.path):
+    print(f"Error: '{args.path}' is not a git repository.")
+    sys.exit(1)
+    
   commits = get_commits(args.path, args.count)
   
   if not commits:
-    print("No commits found or not a git repository.")
+    print("No commits found.")
     sys.exit(0)
     
   print(f"Recent commits (up to {args.count}):")

@@ -9,6 +9,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from utils.git_viewer import get_branches, create_branch, checkout_branch
+from utils.git import is_git_repo
 
 def main():
   parser = argparse.ArgumentParser(description="Manage git branches.")
@@ -19,6 +20,10 @@ def main():
   
   args = parser.parse_args()
   
+  if not is_git_repo(args.path):
+    print(f"Error: '{args.path}' is not a git repository.")
+    sys.exit(1)
+    
   if not any([args.list, args.create, args.checkout]):
     print("Please specify an action: --list, --create, or --checkout")
     sys.exit(1)
@@ -26,7 +31,7 @@ def main():
   if args.list:
     branches = get_branches(args.path)
     if not branches:
-      print("No branches found or not a git repository.")
+      print("No branches found.")
     else:
       print("Local branches:")
       for b in branches:
