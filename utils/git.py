@@ -1,7 +1,7 @@
 """Git utilities for checkpoint and revert operations."""
 import os
 import git
-from git.exc import InvalidGitRepositoryError, GitCommandError
+from git.exc import InvalidGitRepositoryError
 
 
 def is_git_repo(path: str) -> bool:
@@ -25,15 +25,15 @@ def ensure_git_repo(path: str) -> bool:
 
 
 def create_checkpoint(path: str, message: str) -> str | None:
-  """Stage all, commit, return commit hash. Uses --allow-empty if nothing to commit."""
+  """Snapshot current state without staging or committing. Returns a ref for later revert."""
   try:
     repo = git.Repo(path)
-    repo.git.add(".")
-    try:
-      repo.git.commit("-m", message)
-    except GitCommandError:
-      repo.git.commit("--allow-empty", "-m", message)
-    return repo.head.commit.hexsha
+    stash_sha = repo.git.stash("create").strip()
+    if stash_sha:
+      return stash_sha
+    if repo.head.is_valid():
+      return repo.head.commit.hexsha
+    return None
   except Exception:
     return None
 
