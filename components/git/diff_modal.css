@@ -4,10 +4,11 @@ DiffModal {
 
   #diff_modal_container {
     width: 50%;
-    height: auto;
+    height: 90%;
     background: $panel;
     border: round $primary;
     padding: 1;
+    align: center middle;
   }
 
   #diff_modal_header {
@@ -16,13 +17,20 @@ DiffModal {
   }
 
   #diff_modal_content {
-    height: auto;
-    overflow: auto;
-    scrollbar-size: 1 1;
+    height: 95%;
+    overflow: scroll;
+    scrollbar-size: 1 2;
     padding: 1;
   }
 
   #diff_modal_content Static {
     width: auto;
+    height: auto;
     min-width: 100%;
+  }
+
+  #btn_diff_close {
+    height: 1;
+    width: 50%;
+    align: center middle;
   }

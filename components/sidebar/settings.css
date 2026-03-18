@@ -44,6 +44,10 @@ Collapsible:focus {
     border: none;
     padding: 0;
   }
+  .setting-item-switch > .switch--slider {
+    background: $primary-darken-3;
+    color: $primary;
+  }
 
   .setting-item-switch:focus {
     width: 20%;
