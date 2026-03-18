@@ -1,0 +1,17 @@
+ToolList {
+  height: auto;
+  margin: 0;
+  padding: 0;
+}
+
+#add_skill_btn {
+  width: 100%;
+  margin-top: 1;
+}
+
+.header {
+  text-style: bold;
+  width: 100%;
+  color: $primary;
+  text-align: center;
+}

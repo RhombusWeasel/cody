@@ -14,55 +14,7 @@ from utils.icons import EXPORT_CSV, OPEN_EXTERNAL, RUN
 
 
 class DBSidebarTab(Vertical):
-  DEFAULT_CSS = """
-    DBSidebarTab {
-        height: 100%;
-        width: 100%;
-    }
-    #db_tree_container {
-        height: 1fr;
-        border-bottom: solid $primary;
-    }
-    #db_query_pane {
-        height: 1fr;
-        padding: 1;
-    }
-    #db_query_input_container {
-        height: auto;
-        width: 100%;
-        margin-bottom: 1;
-    }
-    #db_results_header {
-        height: auto;
-        width: 1fr;
-        align: left middle;
-        margin-bottom: 1;
-    }
-    #db_results_header Label {
-        width: 1fr;
-        content-align: left middle;
-    }
-    .icon-btn {
-        min-width: 5;
-        width: 5;
-        height: 3;
-        border: round $secondary;
-        background: $secondary;
-    }
-    #db_selected_label {
-        text-style: bold;
-        margin-bottom: 1;
-        color: $success;
-    }
-    #db_query_input {
-        width: 1fr;
-        height: 3;
-        border: round $primary;
-    }
-    #db_query_results {
-        height: 1fr;
-    }
-  """
+
 
   def __init__(self, **kwargs):
     super().__init__(**kwargs)

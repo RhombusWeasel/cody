@@ -73,7 +73,8 @@ def get_commits(path: str, n: int = 20) -> list[dict]:
     for c in repo.iter_commits(max_count=n):
       short_hash = c.hexsha[:7] if len(c.hexsha) >= 7 else c.hexsha
       msg = (c.message or "").split("\n")[0].strip()
-      result.append({"hash": short_hash, "full_hash": c.hexsha, "message": msg})
+      time_str = c.committed_datetime.strftime("%Y-%m-%d %H:%M")
+      result.append({"hash": short_hash, "full_hash": c.hexsha, "message": msg, "time": time_str})
   except GitCommandError:
     pass
   return result
@@ -153,13 +154,84 @@ def commit(path: str, message: str) -> bool:
     return False
 
 
-def checkout_branch(path: str, branch_name: str) -> bool:
-  """Checkout branch by name."""
+def checkout_branch(path: str, branch_name: str) -> tuple[bool, str]:
+  """Checkout branch by name. Returns (success, error_message)."""
+  repo = _get_repo(path)
+  if not repo:
+    return False, "Not a git repository"
+  try:
+    repo.heads[branch_name].checkout()
+    return True, ""
+  except GitCommandError as e:
+    # Extract just the stderr part of the GitCommandError for a cleaner message
+    err_msg = e.stderr.strip() if e.stderr else str(e)
+    return False, err_msg
+  except IndexError:
+    return False, f"Branch '{branch_name}' not found"
+
+
+def discard(path: str, file_path: str) -> bool:
+  """Discard changes in working tree for file. Unstages if staged, restores from index/HEAD."""
   repo = _get_repo(path)
   if not repo:
     return False
   try:
-    repo.heads[branch_name].checkout()
+    repo.git.checkout("--", file_path)
+    repo.git.reset("HEAD", file_path)
     return True
-  except (GitCommandError, IndexError):
+  except GitCommandError:
+    return False
+
+
+def add_to_gitignore(repo_path: str, entry: str) -> bool:
+  """Append path to .gitignore."""
+  from pathlib import Path
+  gitignore = Path(repo_path) / ".gitignore"
+  try:
+    with open(gitignore, "a") as f:
+      f.write(f"\n{entry}\n")
+    return True
+  except OSError:
+    return False
+
+
+def cherry_pick(path: str, commit_hash: str) -> bool:
+  """Cherry-pick commit onto current branch."""
+  repo = _get_repo(path)
+  if not repo:
+    return False
+  try:
+    repo.git.cherry_pick(commit_hash)
+    return True
+  except GitCommandError:
+    return False
+
+
+def create_branch(path: str, branch_name: str, from_commit: str | None = None) -> bool:
+  """Create branch, optionally from specific commit. Does not checkout."""
+  repo = _get_repo(path)
+  if not repo:
+    return False
+  try:
+    if from_commit:
+      repo.git.branch(branch_name, from_commit)
+    else:
+      repo.git.branch(branch_name)
+    return True
+  except GitCommandError:
+    return False
+
+
+def delete_branch(path: str, branch_name: str, force: bool = False) -> bool:
+  """Delete a local branch."""
+  repo = _get_repo(path)
+  if not repo:
+    return False
+  try:
+    if force:
+      repo.git.branch("-D", branch_name)
+    else:
+      repo.git.branch("-d", branch_name)
+    return True
+  except GitCommandError:
     return False

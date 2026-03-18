@@ -1,31 +1,52 @@
 """Nerd Font icon codepoints for consistent UI across components."""
 
 # Sidebar Headers
-CHATS = "\uea82"
-FILE_SYSTEM = "\uea83"
-GIT = "\ue5fb"
-SKILLS = "\uf19d"
-DB = "\uf472"
-SETTINGS = "\ue690"
+CHATS = ""
+FILE_SYSTEM = ""
+GIT = ""
+DB = ""
+SKILLS = ""
+SETTINGS = ""
+
+# Selection
+CHECKED = "󰄲"
+UNCHECKED = ""
+SELECT_ALL = "󰄸"
+CLEAR_SELECTION = "󰄷"
 
 # Actions
-DELETE = "\uEA81"  # nf-cod-trash
-EDIT = "\uEA73"  # nf-cod-edit
-NEW_FILE = "\uEA7F"  # nf-cod-new_file
-NEW_FOLDER = "\uEA80"  # nf-cod-new_folder
-RUN = "\uEB9E"  # nf-cod-run_all
-EXPORT_CSV = "\uE27C"  # nf-fae-file_export
-OPEN_EXTERNAL = "\uEB14"  # nf-cod-link_external
+DELETE = "󰛌"
+EDIT = ""
+NEW_FILE = ""
+NEW_FOLDER = ""
+RUN = ""
+EXPORT_CSV = "󰈇"
+OPEN_EXTERNAL = "󰏌"
 
 # Database
-DATABASE = "\uEACE"  # nf-cod-database
-REFRESH = "\uEC0C"  # nf-cod-refresh
+DATABASE = DB
+REFRESH = ""
 
 # Tree / file browser
-FOLDER = "\uEA83"  # nf-cod-folder
-FILE = "\uEA7B"  # nf-cod-file
-EXPAND_DOWN = "\uEAB4"  # nf-cod-chevron_down
-EXPAND_RIGHT = "\uEAB6"  # nf-cod-chevron_right
+FOLDER = ""  # nf-cod-folder
+FILE = ""  # nf-cod-file
+EXPAND_DOWN = "󰧗"  # nf-cod-chevron_down
+EXPAND_RIGHT = "󰧛"  # nf-cod-chevron_right
+
+# Git tree
+GIT_BRANCH = ""  # nf-cod-git_branch
+GIT_COMMIT = ""  # nf-cod-git_commit
+GIT_CHANGE = ""  # nf-cod-diff
+GIT_DISCARD = ""  # nf-cod-discard
+GIT_IGNORE = ""  # nf-cod-file_symlink_file
+GIT_CHERRY_PICK = ""  # nf-fae-cherry
+GIT_ADD = ""  # nf-fa-plus
+GIT_UNSTAGE = ""  # nf-fa-minus
+
+# Database tree
+DB_TABLE = ""  # nf-fa-table
+DB_VIEW = "󱤢"  # nf-md-database_eye_outline
+DB_TRIGGER = "󱘽"  # nf-cod-zap
 
 # File type icons (devicons)
 FILE_ICONS = {
@@ -54,4 +75,41 @@ FILE_ICONS = {
   ".ico": "\uF1C5",
   ".webp": "\uF1C5",
   ".svg": "\uF1C5",
+}
+
+# Default icon set for GenericTree - subclasses can override via icon_set param
+DEFAULT_ICON_SET = {
+  "folder": FOLDER,
+  "file": FILE,
+  "database": DATABASE,
+  "git": GIT,
+  "skill": SKILLS,
+}
+
+# Preset icon sets for domain-specific trees
+DB_ICON_SET = {
+  **DEFAULT_ICON_SET,
+  "folder": FOLDER,
+  "file": FILE,
+  "database": DATABASE,
+  "table": DB_TABLE,
+  "view": DB_VIEW,
+  "trigger": DB_TRIGGER,
+}
+
+GIT_ICON_SET = {
+  **DEFAULT_ICON_SET,
+  "folder": FOLDER,
+  "file": FILE,
+  "git": GIT,
+  "branch": GIT_BRANCH,
+  "change": GIT_CHANGE,
+  "commit": GIT_COMMIT,
+}
+
+SKILL_ICON_SET = {
+  **DEFAULT_ICON_SET,
+  "folder": FOLDER,
+  "file": FILE,
+  "skill": SKILLS,
 }

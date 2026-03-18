@@ -1,0 +1,24 @@
+InputModal {
+      align: center middle;
+    }
+
+    #input_modal_container {
+      width: 50%;
+      height: auto;
+      background: $panel;
+      border: round $primary;
+      padding: 0;
+    }
+
+    .modal-button-container {
+      height: 3;
+      width: 100%;
+      align: center middle;
+      margin-top: 1;
+      border: round $primary;
+    }
+
+    .modal-button {
+      height: 1;
+      width: 50%;
+    }

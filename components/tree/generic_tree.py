@@ -8,30 +8,28 @@ from textual import on
 
 from components.tree.tree_row import TreeRow, NodeToggled, NodeSelected
 from utils.tree_model import TreeEntry
+from utils.icons import DEFAULT_ICON_SET, FILE
 
 
 class GenericTree(Vertical):
   """Flat tree - single Vertical with one row per entry. Subclass and override."""
 
-  DEFAULT_CSS = """
-  GenericTree {
-    height: auto;
-  }
-
-  GenericTree #tree_rows {
-    height: auto;
-  }
-  """
 
   BRANCH = "├── "
   LAST_BRANCH = "└── "
   VERTICAL = "│   "
   SPACER = "    "
 
-  def __init__(self, **kwargs):
+  def __init__(self, root_node_id: Any | None = None, icon_set: dict[str, str] | None = None, **kwargs):
     super().__init__(**kwargs)
     self._expanded: set[Any] = set()
     self._rows_container: Vertical | None = None
+    self._root_node_id = root_node_id
+    self._icon_set = {**DEFAULT_ICON_SET, **(icon_set or {})}
+
+  def icon(self, key: str) -> str:
+    """Return icon for key from this tree's icon set. Falls back to file icon."""
+    return self._icon_set.get(key, FILE)
 
   def compose(self) -> ComposeResult:
     self._rows_container = Vertical(id="tree_rows")
@@ -54,6 +52,8 @@ class GenericTree(Vertical):
 
   def on_node_toggled(self, node_id: Any) -> None:
     """Override: handle expand/collapse. Default toggles _expanded and refreshes."""
+    if self._root_node_id is not None and node_id == self._root_node_id:
+      return
     if node_id in self._expanded:
       self._expanded.discard(node_id)
     else:

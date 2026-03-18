@@ -9,93 +9,6 @@ from utils.db import db_manager
 import uuid
 import json
 
-CSS = """
-Chat TabbedContent {
-  height: 1fr;
-  min-height: 0;
-}
-
-Chat > MsgBox {
-  height: 1fr;
-  min-height: 0;
-}
-
-MsgBox > Vertical {
-  height: 1fr;
-  min-height: 0;
-}
-
-.chat {
-  height: 1fr;
-  min-height: 0;
-}
-
-MsgBox .container {
-  height: auto;
-  min-height: 3;
-}
-
-Message {
-  padding: 0;
-  margin: 0;
-  height: auto;
-  width: 100%;
-}
-
-.container {
-  width: 99%;
-}
-
-.msgbox {
-  height: 1fr;
-}
-
-.msginput {
-  min-height: 3;
-  height: auto;
-  margin: 0;
-  padding: 0;
-  border: round $primary;
-  background: $surface;
-  width: 100%;
-}
-
-.msginput:focus {
-  border: round $primary-lighten-3;
-}
-
-.autocomplete-list {
-  display: none;
-  max-height: 10;
-  border: round $primary;
-  width: 100%;
-}
-
-.system {
-  border: round $primary-darken-1;
-}
-
-.user {
-  border: round $primary;
-}
-
-.assistant {
-  border: round $secondary;
-}
-
-.tool {
-  border: round $warning;
-}
-
-.file-attachment {
-  border: round $accent-lighten-3;
-  margin: 1 0;
-}
-
-Markdown, MarkdownFence, Markdown Label {
-  text-align: left;
-}
-"""
 
 
 from components.chat.input import MessageInput
@@ -268,7 +181,6 @@ class MsgBox(Widget):
 
 
 class Chat(Widget):
-    DEFAULT_CSS = CSS
     def __init__(self, config, **kwargs):
         self.config = config
         super().__init__(**kwargs)

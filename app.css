@@ -2,6 +2,11 @@ ToastRack {
   dock: top;
 }
 
+Tooltip {
+  border: round $primary;
+  padding: 0;
+}
+
 TabPane {
   height: 1fr;
   background: $surface;

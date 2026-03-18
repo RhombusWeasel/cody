@@ -31,31 +31,6 @@ class NodeSelected(Message, bubble=True):
 class TreeRow(Widget):
   """Single row: indent + expand icon + node icon + label + buttons."""
 
-  DEFAULT_CSS = """
-  TreeRow {
-    height: 1;
-    width: 100%;
-  }
-  TreeRow:hover {
-    background: $surface-lighten-2;
-  }
-
-  TreeRow .tree-indent {
-    width: auto;
-  }
-
-  TreeRow .tree-label {
-    width: 1fr;
-  }
-
-  TreeRow .tree-node-btn {
-    min-width: 3;
-    height: 2;
-    padding: 0 1;
-    color: $primary-lighten-2;
-    align: right middle;
-  }
-  """
 
   def __init__(
     self,
@@ -82,9 +57,9 @@ class TreeRow(Widget):
     label_text = self.icon + " " + self.display_name
 
     with Horizontal():
-      yield Label(self.indent, classes="tree-indent")
-      yield Label(expand, classes="tree-expand")
-      yield Label(label_text, classes="tree-label")
+      yield Label(self.indent, classes="tree-indent", markup=False)
+      yield Label(expand, classes="tree-expand", markup=False)
+      yield Label(label_text, classes="tree-label", markup=False)
       for btn in self._button_factory(self.node_id, self.is_expandable):
         yield btn
 

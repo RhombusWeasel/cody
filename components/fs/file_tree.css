@@ -1,0 +1,8 @@
+FileTreeTab {
+    height: 100%;
+    width: 100%;
+  }
+
+  #fs_tree_container {
+    height: 1fr;
+  }

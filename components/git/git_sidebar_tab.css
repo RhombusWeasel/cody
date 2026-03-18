@@ -1,0 +1,42 @@
+GitSidebarTab {
+  height: 100%;
+  width: 100%;
+}
+
+#git_buttons {
+  height: auto;
+  width: 100%;
+  margin: 1 0;
+}
+
+#git_tree_container {
+  height: 1fr;
+}
+
+.git-icon-btn {
+  min-width: 5;
+  width: auto;
+  height: 1;
+  border: none;
+  padding: 0 0 0 1;
+}
+
+#git_selected_label {
+  text-style: bold;
+  margin-bottom: 1;
+  color: $success;
+  height: auto;
+}
+
+/* Target the text labels specifically in the Git tree */
+GitTree TreeRow .tree-label {
+  width: 1fr;
+}
+/* Target the action icon buttons specifically in the Git tree */
+GitTree TreeRow .tree-node-btn {
+  padding: 0 0 0 0;
+}
+/* You can also target button hover states */
+GitTree TreeRow .tree-node-btn:hover {
+  background: $surface-lighten-3;
+}

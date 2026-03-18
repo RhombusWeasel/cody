@@ -7,27 +7,8 @@ from textual import work, on
 from utils.icons import DELETE
 from utils.db import db_manager
 
-CSS = """
-#chat_list_table {
-    height: auto;
-}
-
-#btn_new_chat {
-    width: 100%;
-    padding: 1 1;
-}
-#chat_list_table > .datatable--header {
-    height: 1;
-    color: $text-muted;
-}
-
-#chat_list_table .datatable--cursor {
-    background: $primary 20%;
-}
-"""
 
 class ChatHistoryTab(VerticalScroll):
-    DEFAULT_CSS = CSS
     class ChatSelected(Message):
         def __init__(self, chat_id: str | None, title: str | None = None):
             self.chat_id = chat_id
