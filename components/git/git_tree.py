@@ -66,12 +66,17 @@ class GitTree(GenericTree):
           is_last = i == len(items) - 1
           branch = self.LAST_BRANCH if is_last else self.BRANCH
           node_id_dict, label = item_formatter(item)
+          label_max = 25
+          if node_id_dict["type"] == "commit":
+            label_text = label[:label_max] + '...' if len(label) > label_max else label
+          else:
+            label_text = '...' + label[-label_max:] if len(label) > label_max else label
           result.append(TreeEntry(
             node_id=node_id_dict,
             indent=child_indent_prefix + branch,
             is_expandable=False,
             is_expanded=False,
-            display_name=label,
+            display_name=label_text,
             icon=self.icon(icon_name),
           ))
     return result
@@ -159,8 +164,8 @@ class GitTree(GenericTree):
       icon_name="commit",
       is_last_category=True,
       item_formatter=lambda c: (
-        {"type": "commit", "hash": c["full_hash"], "short": c["hash"], "message": c["message"]},
-        f"{c['hash']} {c['message'][:15]}..."
+        {"type": "commit", "hash": c["full_hash"], "short": c["hash"], "message": c["message"], "time": c["time"]},
+        f"{c['hash']} {c['time']}"
       )
     ))
 

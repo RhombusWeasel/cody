@@ -73,7 +73,8 @@ def get_commits(path: str, n: int = 20) -> list[dict]:
     for c in repo.iter_commits(max_count=n):
       short_hash = c.hexsha[:7] if len(c.hexsha) >= 7 else c.hexsha
       msg = (c.message or "").split("\n")[0].strip()
-      result.append({"hash": short_hash, "full_hash": c.hexsha, "message": msg})
+      time_str = c.committed_datetime.strftime("%Y-%m-%d %H:%M")
+      result.append({"hash": short_hash, "full_hash": c.hexsha, "message": msg, "time": time_str})
   except GitCommandError:
     pass
   return result
