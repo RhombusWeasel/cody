@@ -1,5 +1,4 @@
 """Database tree - connections, tables, views, triggers."""
-import os
 from typing import Any, Callable
 
 from textual.widgets import Button
@@ -44,7 +43,7 @@ class DBTree(GenericTree):
         indent=branch,
         is_expandable=True,
         is_expanded=path in self._expanded,
-        display_name=os.path.basename(path),
+        display_name=db_manager.get_label(path),
         icon=self.icon("database"),
       ))
 

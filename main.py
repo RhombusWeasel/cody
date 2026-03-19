@@ -39,6 +39,16 @@ from utils.skill_components import discover_sidebar_tabs
 skill_manager.discover_skills()
 discover_sidebar_tabs()
 
+_app_dir = os.path.dirname(os.path.abspath(__file__))
+_css_paths = ['app.css'] + fs.discover_css(
+  os.path.join(_app_dir, 'components'),
+  relative_to=_app_dir
+)
+for _skill in skill_manager.skills.values():
+  _skill_css_dir = os.path.join(_skill['base_dir'], 'components')
+  if os.path.isdir(_skill_css_dir):
+    _css_paths.extend(fs.discover_css(_skill_css_dir))
+
 fs.load_folder('tools', '.py')
 
 global_tools_path = os.path.join(os.path.expanduser('~'), '.agents', 'tools')
@@ -61,24 +71,7 @@ class TuiApp(App):
     ('ctrl+w', 'close_chat_tab', 'Close Chat Tab'),
     ('ctrl+n', 'new_chat_tab', 'New Chat Tab'),
   ]
-  CSS_PATH = [
-    'app.css',
-    'components/utils/input_modal.css',
-    'components/utils/form_modal.css',
-    'components/sidebar/settings.css',
-    'components/sidebar/chat_history.css',
-    'components/sidebar/tool_list.css',
-    'components/sidebar/wrapper.css',
-    'components/chat/chat.css',
-    'components/db/results_modal.css',
-    'components/db/db_sidebar_tab.css',
-    'components/fs/file_tree.css',
-    'components/agents/agents_sidebar_tab.css',
-    'components/git/diff_modal.css',
-    'components/git/git_sidebar_tab.css',
-    'components/tree/tree_row.css',
-    'components/tree/generic_tree.css'
-  ]
+  CSS_PATH = _css_paths
 
   async def on_mount(self):
     themes = discover_themes()

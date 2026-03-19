@@ -1,7 +1,8 @@
 import os
 import re
+import json
 from pathlib import Path
-from utils.cfg_man import cfg
+from utils.cfg_man import cfg, deep_update
 
 def parse_frontmatter(content: str) -> tuple[dict, str]:
     """
@@ -105,6 +106,16 @@ class SkillManager:
                         if not enabled_config[name]:
                             continue
                             
+                    skill_config_path = skill_dir / 'config.json'
+                    if skill_config_path.exists():
+                        try:
+                            with open(skill_config_path, 'r', encoding='utf-8') as f:
+                                skill_defaults = json.load(f)
+                            existing = cfg.data.get(name, {})
+                            cfg.data[name] = deep_update(skill_defaults, existing)
+                        except Exception as e:
+                            print(f"Error loading skill config {skill_config_path}: {e}")
+                
                     self.skills[name] = {
                         'name': name,
                         'description': description,
@@ -112,6 +123,7 @@ class SkillManager:
                         'base_dir': str(skill_dir),
                         'body': body
                     }
+
                 except Exception as e:
                     print(f"Error loading skill {skill_file}: {e}")
 

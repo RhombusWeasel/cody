@@ -6,6 +6,7 @@ from textual import on
 
 from components.tree.generic_tree import GenericTree
 from components.utils.input_modal import InputModal
+from components.utils.form_modal import FormModal
 from utils.tree_model import TreeEntry
 from utils.cfg_man import cfg
 import utils.icons as icons
@@ -94,6 +95,8 @@ class SettingsTree(GenericTree):
                 if is_exp:
                     if isinstance(val, dict):
                         self._walk(val, node_path, ancestors_last + [is_last], entries)
+                    elif node_path == "db.connections":
+                        self._walk_conn_list(val, node_path, ancestors_last + [is_last], entries)
                     else:
                         self._walk_list(val, node_path, ancestors_last + [is_last], entries)
             else:
@@ -126,21 +129,48 @@ class SettingsTree(GenericTree):
                 if is_exp:
                     self._walk(item, item_path, ancestors_last + [is_last], entries)
             else:
-                preview = str(item)
                 entries.append(TreeEntry(
                     node_id=item_path,
                     indent=indent + branch,
                     is_expandable=False,
                     is_expanded=False,
-                    display_name=preview[:28] + ("…" if len(preview) > 28 else ""),
+                    display_name="",
                     icon=icons.FILE,
                 ))
 
+    def _walk_conn_list(self, lst: list, path: str, ancestors_last: list[bool], entries: list) -> None:
+        for i, item in enumerate(lst):
+            is_last = i == len(lst) - 1
+            item_path = f"{path}.{i}"
+            indent = self._build_indent(ancestors_last)
+            branch = self.LAST_BRANCH if is_last else self.BRANCH
+            label = (
+                item.get("label") or item.get("path", f"Connection {i}")
+            ) if isinstance(item, dict) else str(item)
+            entries.append(TreeEntry(
+                node_id=item_path,
+                indent=indent + branch,
+                is_expandable=False,
+                is_expanded=False,
+                display_name=label,
+                icon=icons.DB,
+            ))
+
     # --- editor widgets per node ---
+
+    def _is_conn_item(self, node_id: str) -> bool:
+        parts = node_id.split('.')
+        return parts[-1].isdigit() and '.'.join(parts[:-1]) == "db.connections"
 
     def get_node_buttons(self, node_id: str, is_expandable: bool) -> list:
         if node_id == self._section_key:
             return []
+
+        if self._is_conn_item(node_id):
+            return [
+                self._make_btn(icons.EDIT, "Edit connection", "edit_conn", btn_class="settings-edit-btn"),
+                self._make_btn(icons.DELETE, "Delete connection", "delete", btn_class="settings-del-btn"),
+            ]
 
         val = cfg.get(node_id)
         parts = node_id.split('.')
@@ -179,7 +209,25 @@ class SettingsTree(GenericTree):
     # --- actions ---
 
     def on_button_action(self, node_id: str, action: str) -> None:
-        if action == "add":
+        if action == "edit_conn":
+            val = cfg.get(node_id)
+            if not isinstance(val, dict):
+                return
+            schema = [
+                {"key": "label", "label": "Label", "type": "text", "placeholder": "e.g. Production DB"},
+                {"key": "path", "label": "Path / URL", "type": "text", "required": True},
+                {"key": "type", "label": "Type", "type": "text", "placeholder": "e.g. sqlite3"},
+            ]
+
+            def _save(result: dict | None) -> None:
+                if result:
+                    cfg.set(node_id, result)
+                    cfg.changed = False
+                    self.reload()
+
+            self.app.push_screen(FormModal("Edit Connection", schema=schema, args=val, callback=_save))
+
+        elif action == "add":
             lst = cfg.get(node_id)
             if not isinstance(lst, list):
                 return

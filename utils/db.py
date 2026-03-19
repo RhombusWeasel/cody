@@ -7,6 +7,7 @@ from utils.cfg_man import cfg
 class DatabaseManager:
     def __init__(self):
         self.connections = {}
+        self.conn_meta: dict[str, dict] = {}
         self.load_connections()
         self._init_project_db()
 
@@ -27,7 +28,11 @@ class DatabaseManager:
             shutil.copy2(old_db, db_path)
         
         db_path = self.get_project_db_path()
-        self.add_connection(db_path, save=True)
+        self.add_connection(db_path, conn_type="sqlite3", save=True)
+        meta = self.conn_meta.get(db_path, {})
+        if not meta.get("label"):
+            self.conn_meta[db_path] = {**meta, "label": "Cody Data"}
+            self._save_connections()
         
         # Initialize tables
         conn = self.connections[db_path]
@@ -82,9 +87,13 @@ class DatabaseManager:
             # Handle legacy string format
             if isinstance(conn_data, str):
                 path = conn_data
+                label = None
+                conn_type = "sqlite3"
                 needs_save = True
             elif isinstance(conn_data, dict):
                 path = conn_data.get("path")
+                label = conn_data.get("label") or None
+                conn_type = conn_data.get("type", "sqlite3")
             else:
                 continue
 
@@ -94,32 +103,39 @@ class DatabaseManager:
 
             if path:
                 try:
-                    self.add_connection(path, save=False)
+                    self.add_connection(path, label=label, conn_type=conn_type, save=False)
                 except Exception as e:
                     print(f"Failed to load database connection {path}: {e}")
                     
         if needs_save:
             self._save_connections()
 
-    def add_connection(self, path: str, save: bool = True):
+    def add_connection(self, path: str, label: str | None = None, conn_type: str = "sqlite3", save: bool = True):
         if path not in self.connections:
             self.connections[path] = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
+            self.conn_meta[path] = {"label": label or "", "type": conn_type}
             if save:
                 self._save_connections()
+
+    def get_label(self, path: str) -> str:
+        meta = self.conn_meta.get(path, {})
+        return meta.get("label") or os.path.basename(path)
 
     def remove_connection(self, path: str):
         if path in self.connections:
             self.connections[path].close()
             del self.connections[path]
+            self.conn_meta.pop(path, None)
             self._save_connections()
 
     def _save_connections(self):
         connections_data = []
         for path in self.connections.keys():
-            connections_data.append({
-                "path": path,
-                "type": "sqlite3"
-            })
+            meta = self.conn_meta.get(path, {})
+            entry = {"path": path, "type": meta.get("type", "sqlite3")}
+            if meta.get("label"):
+                entry["label"] = meta["label"]
+            connections_data.append(entry)
         cfg.set("db.connections", connections_data)
 
     async def execute(self, path: str, query: str, params: tuple = ()):

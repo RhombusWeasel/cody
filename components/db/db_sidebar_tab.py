@@ -6,6 +6,7 @@ from textual.widgets import Button, Label, Input, DataTable
 from textual import on
 
 from components.utils.input_modal import InputModal
+from components.utils.form_modal import FormModal
 from components.db.results_modal import ResultsModal
 from components.db.db_tree import DBTree
 from utils.cfg_man import cfg
@@ -56,12 +57,18 @@ class DBSidebarTab(Vertical):
 
   @on(Button.Pressed, "#btn_add_db_conn")
   def on_add_connection(self) -> None:
-    def check_modal_result(result: str | None) -> None:
-      if result:
-        db_manager.add_connection(result)
+    schema = [
+      {"key": "label", "label": "Label", "type": "text", "placeholder": "e.g. Production DB"},
+      {"key": "path", "label": "Path / URL", "type": "text", "required": True},
+      {"key": "type", "label": "Type", "type": "text", "placeholder": "e.g. sqlite3"},
+    ]
+
+    def on_save(result: dict | None) -> None:
+      if result and result.get("path"):
+        db_manager.add_connection(result["path"], label=result.get("label"), conn_type=result.get("type"))
         self._refresh_tree()
 
-    self.app.push_screen(InputModal("Enter database path or URL"), check_modal_result)
+    self.app.push_screen(FormModal("Add Connection", schema=schema, callback=on_save))
 
   @on(Button.Pressed, "#btn_popout_query")
   def on_popout_query(self) -> None:
