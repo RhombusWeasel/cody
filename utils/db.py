@@ -47,6 +47,18 @@ class DatabaseManager:
                 user_input TEXT
             )
         ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS agents (
+                id TEXT PRIMARY KEY,
+                name TEXT UNIQUE,
+                description TEXT,
+                system_prompt TEXT,
+                tool_groups TEXT,
+                provider TEXT,
+                model TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
 
     def load_connections(self):
         saved_connections = cfg.get("db.connections", [])
@@ -184,5 +196,57 @@ class DatabaseManager:
         db_path = self.get_project_db_path()
         query = 'DELETE FROM chats WHERE id = ?'
         await self.execute(db_path, query, (str(chat_id),))
+
+    async def get_agents(self):
+        db_path = self.get_project_db_path()
+        query = 'SELECT id, name, description, tool_groups, provider, model, updated_at FROM agents ORDER BY name'
+        columns, rows = await self.execute(db_path, query)
+        return [
+            {"id": r[0], "name": r[1], "description": r[2],
+             "tool_groups": r[3], "provider": r[4], "model": r[5], "updated_at": r[6]}
+            for r in rows
+        ]
+
+    async def get_agent_by_name(self, name: str):
+        db_path = self.get_project_db_path()
+        query = 'SELECT id, name, description, system_prompt, tool_groups, provider, model FROM agents WHERE name = ?'
+        columns, rows = await self.execute(db_path, query, (name,))
+        if rows:
+            r = rows[0]
+            return {"id": r[0], "name": r[1], "description": r[2],
+                    "system_prompt": r[3], "tool_groups": r[4], "provider": r[5], "model": r[6]}
+        return None
+
+    async def get_agent_by_name_or_id(self, id_or_name: str):
+        db_path = self.get_project_db_path()
+        query = 'SELECT id, name, description, system_prompt, tool_groups, provider, model FROM agents WHERE id = ? OR name = ?'
+        columns, rows = await self.execute(db_path, query, (id_or_name, id_or_name))
+        if rows:
+            r = rows[0]
+            return {"id": r[0], "name": r[1], "description": r[2],
+                    "system_prompt": r[3], "tool_groups": r[4], "provider": r[5], "model": r[6]}
+        return None
+
+    async def save_agent(self, agent_id: str, name: str, description: str,
+                         system_prompt: str, tool_groups: str, provider: str, model: str):
+        db_path = self.get_project_db_path()
+        query = '''
+            INSERT INTO agents (id, name, description, system_prompt, tool_groups, provider, model, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(id) DO UPDATE SET
+                name=excluded.name,
+                description=excluded.description,
+                system_prompt=excluded.system_prompt,
+                tool_groups=excluded.tool_groups,
+                provider=excluded.provider,
+                model=excluded.model,
+                updated_at=CURRENT_TIMESTAMP
+        '''
+        await self.execute(db_path, query, (agent_id, name, description, system_prompt, tool_groups, provider, model))
+
+    async def delete_agent(self, agent_id: str):
+        db_path = self.get_project_db_path()
+        query = 'DELETE FROM agents WHERE id = ?'
+        await self.execute(db_path, query, (str(agent_id),))
 
 db_manager = DatabaseManager()

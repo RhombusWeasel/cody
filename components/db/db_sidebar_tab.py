@@ -5,7 +5,7 @@ from textual.containers import Vertical, Horizontal, VerticalScroll
 from textual.widgets import Button, Label, Input, DataTable
 from textual import on
 
-from components.input_modal import InputModal
+from components.utils.input_modal import InputModal
 from components.db.results_modal import ResultsModal
 from components.db.db_tree import DBTree
 from utils.cfg_man import cfg

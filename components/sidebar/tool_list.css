@@ -12,6 +12,6 @@ ToolList {
 .header {
   text-style: bold;
   width: 100%;
-  color: $primary;
+  color: $text;
   text-align: center;
 }

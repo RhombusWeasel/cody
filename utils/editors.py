@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import Callable
 
-from components.input_modal import InputModal
+from components.utils.input_modal import InputModal
 
 
 LANG_MAP = {

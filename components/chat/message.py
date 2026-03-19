@@ -137,7 +137,7 @@ class Message(Widget):
   def on_revert_pressed(self, event: Button.Pressed) -> None:
     if not self.git_checkpoint:
       return
-    from components.input_modal import InputModal
+    from components.utils.input_modal import InputModal
     from components.chat.chat import MsgBox
     from components.chat.input import MessageInput
     from utils.cfg_man import cfg

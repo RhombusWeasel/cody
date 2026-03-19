@@ -1,8 +1,11 @@
-from ollama import chat
+from ollama import Client
 from utils.providers.base import ChatResponse, Message, ToolCall
 
 
 class OllamaProvider:
+  def __init__(self):
+    self._client = Client()
+
   def chat(
     self,
     model: str,
@@ -13,7 +16,7 @@ class OllamaProvider:
     kwargs = {"model": model, "messages": messages, "options": options}
     if tools:
       kwargs["tools"] = tools
-    resp = chat(**kwargs)
+    resp = self._client.chat(**kwargs)
     tool_calls = None
     if resp.message.tool_calls:
       tool_calls = [

@@ -6,7 +6,7 @@ from textual.widgets import Button, Label
 from textual import on
 
 from components.tree import NodeSelected
-from components.input_modal import InputModal
+from components.utils.input_modal import InputModal
 from components.git.diff_modal import DiffModal
 from components.git.git_tree import GitTree, SelectionChanged, _get_working_dir
 from utils.agent import TaskAgent

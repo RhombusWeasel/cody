@@ -6,7 +6,7 @@ from components.chat.chat import Chat, MsgBox
 from textual.widgets import Header, Footer, Button, TabbedContent, TabPane
 from components.sidebar.wrapper import Sidebar
 from components.terminal.terminal_sidebar import TerminalSidebar, CustomTerminal
-from components.input_modal import InputModal
+from components.utils.input_modal import InputModal
 from textual.containers import Horizontal, Vertical
 
 import utils.fs as fs
@@ -41,6 +41,10 @@ discover_sidebar_tabs()
 
 fs.load_folder('tools', '.py')
 
+global_tools_path = os.path.join(os.path.expanduser('~'), '.agents', 'tools')
+if os.path.exists(global_tools_path):
+  fs.load_folder(global_tools_path, '.py')
+
 local_tools_path = os.path.join(args.working_directory, '.agents', 'tools')
 if os.path.exists(local_tools_path):
   fs.load_folder(local_tools_path, '.py')
@@ -59,7 +63,8 @@ class TuiApp(App):
   ]
   CSS_PATH = [
     'app.css',
-    'components/input_modal.css',
+    'components/utils/input_modal.css',
+    'components/utils/form_modal.css',
     'components/sidebar/settings.css',
     'components/sidebar/chat_history.css',
     'components/sidebar/tool_list.css',
@@ -68,6 +73,7 @@ class TuiApp(App):
     'components/db/results_modal.css',
     'components/db/db_sidebar_tab.css',
     'components/fs/file_tree.css',
+    'components/agents/agents_sidebar_tab.css',
     'components/git/diff_modal.css',
     'components/git/git_sidebar_tab.css',
     'components/tree/tree_row.css',

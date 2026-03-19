@@ -8,11 +8,11 @@ from textual.widgets import Button, Label
 from textual import on
 
 from components.tree import GenericTree, NodeSelected
-from components.input_modal import InputModal
+from components.utils.input_modal import InputModal
 from utils.skills import skill_manager
 from utils import fs_tree
 from utils.tree_model import TreeEntry
-from utils.icons import SKILL_ICON_SET, FILE_ICONS
+import utils.icons as icons
 from utils.editors import open_file_editor
 
 
@@ -20,7 +20,7 @@ class SkillsTree(GenericTree):
   """Skills tree with file-tree view for scripts/ and components/."""
 
   def __init__(self, **kwargs):
-    super().__init__(icon_set=SKILL_ICON_SET, **kwargs)
+    super().__init__(icon_set=icons.SKILL_ICON_SET, **kwargs)
 
   def get_visible_entries(self) -> list[TreeEntry]:
     result: list[TreeEntry] = []
@@ -89,7 +89,7 @@ class SkillsTree(GenericTree):
             fs_tree.path_entries_to_tree(
               result, path, ext + child_ext, self._expanded,
               self.BRANCH, self.LAST_BRANCH, self.VERTICAL, self.SPACER,
-              folder_icon=self.icon("folder"), file_icon=self.icon("file"), file_icons=FILE_ICONS,
+              folder_icon=self.icon("folder"), file_icon=self.icon("file"), file_icons=icons.FILE_ICONS,
             )
 
     return result
@@ -107,7 +107,7 @@ class ToolList(Container):
 
   def compose(self) -> ComposeResult:
     with Vertical():
-      yield Label("Skills", classes="header")
+      yield Label(f"{icons.SKILLS}  Skills", classes="header")
       with VerticalScroll():
         yield SkillsTree(id="skills_tree")
       yield Button("Add Skill", id="add_skill_btn", variant="primary")

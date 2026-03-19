@@ -4,7 +4,7 @@ from typing import Any, Callable
 
 import git
 
-from components.input_modal import InputModal
+from components.utils.input_modal import InputModal
 from utils.git import (
   pop_stash, drop_stash, revert_commit, merge_branch, rename_branch
 )

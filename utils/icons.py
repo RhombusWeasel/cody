@@ -6,6 +6,7 @@ FILE_SYSTEM = ""
 GIT = ""
 DB = ""
 SKILLS = ""
+AGENTS = "󱙺"
 SETTINGS = ""
 
 # Selection

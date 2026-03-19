@@ -1,0 +1,69 @@
+FormModal {
+  align: center middle;
+}
+
+#form_modal_container {
+  width: 80%;
+  height: 85%;
+  background: $panel;
+  border: round $primary;
+  padding: 1;
+}
+
+#form_modal_title {
+  width: 100%;
+  text-style: bold;
+  text-align: center;
+  color: $primary;
+  margin-bottom: 1;
+  height: 1;
+}
+
+#form_modal_body {
+  height: 1fr;
+  padding: 0 1;
+}
+
+.field-label {
+  height: 1;
+  color: $text-muted;
+  margin-top: 1;
+}
+
+#form_modal_body Input {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+#form_modal_body TextArea {
+  height: 10;
+  width: 100%;
+  margin-bottom: 1;
+}
+
+.form-modal-row {
+  width: 100%;
+  height: auto;
+}
+
+.form-modal-col {
+  width: 1fr;
+  height: auto;
+}
+
+.form-modal-col:first-child {
+  margin-right: 1;
+}
+
+.modal-button-container {
+  height: 3;
+  width: 100%;
+  align: center middle;
+  margin-top: 1;
+}
+
+.modal-button {
+  width: 1fr;
+  height: 1;
+  margin: 0 1;
+}

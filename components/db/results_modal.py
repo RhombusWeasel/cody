@@ -6,7 +6,7 @@ from textual.widgets import Label, Button, DataTable
 from textual.screen import ModalScreen
 from textual import on
 
-from components.input_modal import InputModal
+from components.utils.input_modal import InputModal
 from utils.icons import EXPORT_CSV
 
 class ResultsModal(ModalScreen):

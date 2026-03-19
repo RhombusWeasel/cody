@@ -7,7 +7,7 @@ from textual.widgets import Button
 from textual import on
 
 from components.tree import GenericTree, NodeSelected
-from components.input_modal import InputModal
+from components.utils.input_modal import InputModal
 from utils.cfg_man import cfg
 from utils import fs_tree
 from utils.tree_model import TreeEntry

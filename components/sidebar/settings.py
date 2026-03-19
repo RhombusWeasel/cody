@@ -5,7 +5,7 @@ from textual.widgets import Input, Switch, Label
 from textual import on
 
 from components.tree.generic_tree import GenericTree
-from components.input_modal import InputModal
+from components.utils.input_modal import InputModal
 from utils.tree_model import TreeEntry
 from utils.cfg_man import cfg
 import utils.icons as icons
@@ -89,7 +89,7 @@ class SettingsTree(GenericTree):
                     is_expandable=True,
                     is_expanded=is_exp,
                     display_name=label,
-                    icon=FOLDER,
+                    icon=icons.FOLDER,
                 ))
                 if is_exp:
                     if isinstance(val, dict):
@@ -103,7 +103,7 @@ class SettingsTree(GenericTree):
                     is_expandable=False,
                     is_expanded=False,
                     display_name=str(key).replace('_', ' '),
-                    icon=FILE,
+                    icon=icons.FILE,
                 ))
 
     def _walk_list(self, lst: list, path: str, ancestors_last: list[bool], entries: list) -> None:
@@ -121,7 +121,7 @@ class SettingsTree(GenericTree):
                     is_expandable=True,
                     is_expanded=is_exp,
                     display_name=f"Item {i}",
-                    icon=FOLDER,
+                    icon=icons.FOLDER,
                 ))
                 if is_exp:
                     self._walk(item, item_path, ancestors_last + [is_last], entries)
@@ -133,7 +133,7 @@ class SettingsTree(GenericTree):
                     is_expandable=False,
                     is_expanded=False,
                     display_name=preview[:28] + ("…" if len(preview) > 28 else ""),
-                    icon=FILE,
+                    icon=icons.FILE,
                 ))
 
     # --- editor widgets per node ---
@@ -148,7 +148,7 @@ class SettingsTree(GenericTree):
 
         if isinstance(val, dict):
             if is_list_item:
-                return [self._make_btn(DELETE, "Delete item", "delete", btn_class="settings-del-btn")]
+                return [self._make_btn(icons.DELETE, "Delete item", "delete", btn_class="settings-del-btn")]
             return []
 
         if isinstance(val, list):
@@ -161,14 +161,14 @@ class SettingsTree(GenericTree):
                     password=_is_password_field(node_id),
                     classes="settings-input",
                 ),
-                self._make_btn(DELETE, "Delete", "delete", btn_class="settings-del-btn"),
+                self._make_btn(icons.DELETE, "Delete", "delete", btn_class="settings-del-btn"),
             ]
 
         if isinstance(val, bool):
             return [Switch(value=val, classes="settings-switch")]
 
         if isinstance(val, str) and '\n' in val:
-            return [self._make_btn(EDIT, "Edit", "edit", btn_class="settings-edit-btn")]
+            return [self._make_btn(icons.EDIT, "Edit", "edit", btn_class="settings-edit-btn")]
 
         return [Input(
             value=str(val) if val is not None else "",
@@ -264,5 +264,5 @@ class SettingsMenu(Vertical):
             for key in cfg.data:
                 yield SettingsTree(
                     section_key=key,
-                    icon=SECTION_ICONS.get(key, FOLDER),
+                    icon=SECTION_ICONS.get(key, icons.FOLDER),
                 )
