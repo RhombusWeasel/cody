@@ -9,8 +9,8 @@ GitSidebarTab {
   text-style: bold;
   text-align: center;
   padding: 0 1;
-  color: $primary;
-  background: $surface-darken-1;
+  color: $text;
+  background: $surface;
 }
 
 #git_buttons {
@@ -29,6 +29,7 @@ GitSidebarTab {
   padding: 0;
   min-width: 0;
   content-align: center middle;
+  color: $primary-lighten-2;
 }
 
 .git-icon-btn:hover {
@@ -40,10 +41,12 @@ GitSidebarTab {
 }
 
 #git_selected_label {
+  width: 100%;
   text-style: bold;
-  margin-bottom: 1;
+  margin: 1 0;
   color: $success;
   height: auto;
+  text-align: center;
 }
 
 /* Target the text labels specifically in the Git tree */

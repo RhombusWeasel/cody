@@ -30,7 +30,7 @@ class GitSidebarTab(Vertical):
     self.selected_for_action: set[str] = set()
 
   def compose(self) -> ComposeResult:
-    yield Label(f"{GIT} Git Manager", id="git_tab_title")
+    yield Label(f"{GIT} Manager", id="git_tab_title")
     with Grid(id="git_buttons"):
       yield Button(REFRESH, id="btn_git_refresh", classes="git-icon-btn")
       yield Button(GIT_COMMIT, id="btn_git_commit", classes="git-icon-btn")

@@ -15,27 +15,7 @@ from utils.cfg_man import cfg
 from utils.db import db_manager
 from components.sidebar.chat_history import ChatHistoryTab
 
-from textual.theme import Theme
-
-haxor_theme = Theme(
-    name="h4x0я",
-    primary="#009999",
-    secondary="#339999",
-    accent="#669999",
-    foreground="#EEEEEE",
-    background="#000000",
-    success="#009900",
-    warning="#995500",
-    error="#990000",
-    surface="#112222",
-    panel="#223333",
-    dark=True,
-    variables={
-        "block-cursor-text-style": "none",
-        "footer-key-foreground": "#88C0D0",
-        "input-selection-background": "#1F1F1F 35%",
-    },
-)
+from utils.theme_man import discover_themes
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -95,8 +75,13 @@ class TuiApp(App):
   ]
 
   async def on_mount(self):
-    self.register_theme(haxor_theme)
-    self.theme = "h4x0я"
+    themes = discover_themes()
+    for t in themes.values():
+      self.register_theme(t)
+    self.theme = cfg.get('interface.theme', 'h4x0я')
+
+  def watch_theme(self, theme: str) -> None:
+    cfg.set('interface.theme', theme)
 
   async def cleanup(self):
     try:

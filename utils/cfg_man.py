@@ -13,7 +13,8 @@ class Config:
         self.base_path = base_path
         self.local_path = local_path
         self.data = {}
- 
+        self.changed = False
+
 
         if self.base_path and os.path.exists(self.base_path):
             with open(self.base_path) as file:
@@ -86,6 +87,7 @@ class Config:
                 target[last_step] = value
         else:
             target[last_step] = value
+        self.changed = True
         self.save()
 
     def save(self):
