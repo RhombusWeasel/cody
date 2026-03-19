@@ -13,8 +13,6 @@ from utils.skills import skill_manager
 from utils import fs_tree, file_ops
 from utils.tree_model import TreeEntry
 import utils.icons as icons
-from utils.editors import open_file_editor
-
 
 class SkillsTree(GenericTree):
   """Skills tree with file-tree view for scripts/ and components/."""
@@ -134,14 +132,10 @@ class ToolList(Container):
   @on(NodeSelected)
   def on_skill_node_selected(self, event: NodeSelected) -> None:
     node_id = event.node_id
-    if isinstance(node_id, dict):
-      if node_id.get("kind") == "edit_skill":
-        path = node_id.get("path")
-        if path and os.path.exists(path):
-          self._open_skill_editor(path)
-      return
-    if isinstance(node_id, Path) and node_id.is_file():
-      self._open_file_editor(node_id)
+    if isinstance(node_id, dict) and node_id.get("kind") == "edit_skill":
+      path = node_id.get("path")
+      if path and os.path.exists(path):
+        self._open_skill_editor(path)
 
   def _open_skill_editor(self, path: str) -> None:
     with open(path, "r", encoding="utf-8") as f:
@@ -164,9 +158,6 @@ class ToolList(Container):
       ),
       save_skill,
     )
-
-  def _open_file_editor(self, path: Path) -> None:
-    open_file_editor(self.app, path, on_saved=lambda: self._refresh_tree(force=True))
 
   @on(Button.Pressed, "#add_skill_btn")
   def on_add_skill(self) -> None:

@@ -4,9 +4,7 @@ from pathlib import Path
 from textual.app import ComposeResult
 from textual.containers import Vertical, VerticalScroll
 from textual.widgets import Button
-from textual import on
-
-from components.tree import GenericTree, NodeSelected
+from components.tree import GenericTree
 from utils.cfg_man import cfg
 from utils import fs_tree, file_ops
 from utils.tree_model import TreeEntry
@@ -53,10 +51,3 @@ class FileTreeTab(Vertical):
     with VerticalScroll(id="fs_tree_container"):
       yield FileTree(working_dir, id="fs_file_tree")
 
-  @on(NodeSelected)
-  def on_file_selected(self, event: NodeSelected) -> None:
-    path = event.node_id
-    if not isinstance(path, Path) or not path.is_file():
-      return
-    tree = self.query_one("#fs_file_tree", FileTree)
-    open_file_editor(self.app, path, on_saved=lambda: tree.reload())

@@ -5,7 +5,7 @@ from typing import Callable
 from textual.widgets import Button
 
 from utils import fs_tree
-from utils.icons import DELETE, NEW_FILE, NEW_FOLDER
+from utils.icons import DELETE, EDIT, NEW_FILE, NEW_FOLDER
 from utils.editors import open_file_editor
 from components.utils.input_modal import InputModal
 
@@ -23,7 +23,10 @@ def node_buttons(is_expandable: bool, make_btn: Callable) -> list[Button]:
       make_btn(NEW_FOLDER, "New folder", "new_dir"),
       make_btn(DELETE, "Delete", "delete"),
     ]
-  return [make_btn(DELETE, "Delete", "delete")]
+  return [
+    make_btn(EDIT, "Edit", "edit"),
+    make_btn(DELETE, "Delete", "delete"),
+  ]
 
 
 def handle_action(app, path: Path, action: str, on_refresh: Callable) -> None:

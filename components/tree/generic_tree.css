@@ -11,5 +11,5 @@ GenericTree {
   }
 
   GenericTree #tree_rows TreeRow:odd {
-    background: $panel;
+    background: $surface-lighten-2;
   }
