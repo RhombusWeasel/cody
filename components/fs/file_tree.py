@@ -7,12 +7,10 @@ from textual.widgets import Button
 from textual import on
 
 from components.tree import GenericTree, NodeSelected
-from components.utils.input_modal import InputModal
 from utils.cfg_man import cfg
-from utils import fs_tree
+from utils import fs_tree, file_ops
 from utils.tree_model import TreeEntry
-from utils.icons import DELETE, NEW_FILE, NEW_FOLDER, FILE_ICONS
-from utils.editors import open_file_editor
+from utils.icons import FILE_ICONS
 
 
 class FileTree(GenericTree):
@@ -40,66 +38,10 @@ class FileTree(GenericTree):
     return result
 
   def get_node_buttons(self, node_id: Path, is_expandable: bool) -> list[Button]:
-    if is_expandable:
-      btns = [
-        self._make_btn(NEW_FILE, "New file", "new_file"),
-        self._make_btn(NEW_FOLDER, "New folder", "new_dir"),
-        self._make_btn(DELETE, "Delete", "delete"),
-      ]
-    else:
-      btns = [self._make_btn(DELETE, "Delete", "delete")]
-    return btns
+    return file_ops.node_buttons(is_expandable, self._make_btn)
 
   def on_button_action(self, node_id: Path, action: str) -> None:
-    if action == "edit":
-      self._do_edit(node_id)
-    elif action == "delete":
-      self._do_delete(node_id)
-    elif action == "new_file":
-      self._do_new_file(node_id)
-    elif action == "new_dir":
-      self._do_new_dir(node_id)
-
-  def _do_edit(self, path: Path) -> None:
-    open_file_editor(self.app, path, on_saved=lambda: self._refresh())
-
-  def _do_delete(self, path: Path) -> None:
-    def on_confirm(ok: bool | None):
-      if ok and fs_tree.delete_path(path):
-        self.notify(f"Deleted {path.name}")
-        self._expanded.discard(path)
-        self._refresh()
-      elif ok:
-        self.notify("Delete failed", severity="error")
-
-    self.app.push_screen(
-      InputModal(f"Delete {path.name}?", initial_value="", confirm_only=True),
-      on_confirm,
-    )
-
-  def _do_new_file(self, parent: Path) -> None:
-    def on_result(name: str | None):
-      if name and name.strip():
-        new_path = parent / name.strip()
-        if fs_tree.create_file(new_path):
-          self.notify(f"Created {name}")
-          self._refresh()
-        else:
-          self.notify("Create failed", severity="error")
-
-    self.app.push_screen(InputModal("New file name", initial_value=""), on_result)
-
-  def _do_new_dir(self, parent: Path) -> None:
-    def on_result(name: str | None):
-      if name and name.strip():
-        new_path = parent / name.strip()
-        if fs_tree.create_dir(new_path):
-          self.notify(f"Created {name}")
-          self._refresh()
-        else:
-          self.notify("Create failed", severity="error")
-
-    self.app.push_screen(InputModal("New folder name", initial_value=""), on_result)
+    file_ops.handle_action(self.app, node_id, action, self._refresh)
 
 
 class FileTreeTab(Vertical):

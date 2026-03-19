@@ -10,7 +10,7 @@ from textual import on
 from components.tree import GenericTree, NodeSelected
 from components.utils.input_modal import InputModal
 from utils.skills import skill_manager
-from utils import fs_tree
+from utils import fs_tree, file_ops
 from utils.tree_model import TreeEntry
 import utils.icons as icons
 from utils.editors import open_file_editor
@@ -95,7 +95,13 @@ class SkillsTree(GenericTree):
     return result
 
   def get_node_buttons(self, node_id, is_expandable) -> list[Button]:
+    if isinstance(node_id, Path):
+      return file_ops.node_buttons(is_expandable, self._make_btn)
     return []
+
+  def on_button_action(self, node_id, action: str) -> None:
+    if isinstance(node_id, Path):
+      file_ops.handle_action(self.app, node_id, action, self._refresh)
 
 
 
