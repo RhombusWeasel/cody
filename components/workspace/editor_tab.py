@@ -48,7 +48,7 @@ class EditorTab(TabPane):
         text_area = self.query_one("#editor_textarea", TextArea)
         try:
             self.file_path.write_text(text_area.text, encoding="utf-8")
-            self.app.notify(f"Saved {self.file_path.name}")
+            self.app.notify(f"Saved {self.file_path.name}", severity="information")
             if self.on_saved:
                 self.on_saved()
         except Exception as e:

@@ -45,7 +45,7 @@ Message {
   padding: 0;
   border: round $primary;
   background: $surface;
-  width: 100%;
+  width: 1fr;
 }
 
 .msginput:focus {

@@ -1,39 +1,64 @@
-import os
+import argparse
 import asyncio
+import os
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+  'working_directory',
+  nargs='?',
+  default='.',
+  type=str,
+  help='The working directory',
+)
+parser.add_argument(
+  '--encrypt-config',
+  action='store_true',
+  help='Encrypt plaintext JSON configs to .enc (PBKDF2+Fernet), then exit.',
+)
+parser.add_argument(
+  '--config-password-file',
+  default=None,
+  metavar='PATH',
+  help='Read config decryption password from file (non-interactive).',
+)
+args = parser.parse_args()
+
+args.working_directory = os.path.abspath(
+  os.getcwd() if args.working_directory == '.' else args.working_directory
+)
+
+from utils.cfg_man import cfg, ensure_config_loaded
+
+ensure_config_loaded(
+  args.working_directory,
+  encrypt_config=args.encrypt_config,
+  config_password_file=args.config_password_file,
+)
+
 from textual import on
 from textual.app import App
-from textual.binding import Binding
 from components.chat.chat import ChatTab, MsgBox
 from components.workspace.workspace import Workspace
-from textual.widgets import Header, Footer, Button, TabbedContent, TabPane
+from textual.widgets import Header, Footer, TabPane
 from components.sidebar.wrapper import Sidebar
-from components.terminal.terminal_sidebar import TerminalSidebar, CustomTerminal
-from components.utils.input_modal import InputModal
+from components.terminal.terminal_sidebar import TerminalSidebar
 from textual.containers import Horizontal, Vertical
 
 import utils.fs as fs
-from utils.agent import Agent
-from utils.cfg_man import cfg
 from utils.db import db_manager
-from components.sidebar.chat_history import ChatHistoryTab
+from components.sidebar.chat_history import ChatHistoryTab, OpenChatWithSeedMessage
 
 from utils.theme_man import discover_themes
 
-import argparse
-parser = argparse.ArgumentParser()
-parser.add_argument('working_directory', type=str, help='The working directory', default='.')
-args = parser.parse_args()
+from components.workspace.workspace_app_mixin import WorkspaceAppKeybindsMixin
+from components.app_shell_keybinds import AppShellKeybindsMixin
+from utils.layout_visibility import init_sidebar_state_from_cfg
 
-show_system_messages = cfg.get('interface.show_system_messages')
-if args.working_directory == '.':
-  args.working_directory = os.getcwd()
-else:
-  args.working_directory = args.working_directory
-
-cfg.load_project_config(args.working_directory)
 cfg.set('session.working_directory', args.working_directory)
+init_sidebar_state_from_cfg()
 
 from utils.git import ensure_git_repo
+
 ensure_git_repo(args.working_directory)
 
 from utils.skills import skill_manager
@@ -57,23 +82,13 @@ for tool_path in get_tiered_paths('tools', args.working_directory):
   if os.path.exists(tool_path):
     fs.load_folder(tool_path, '.py')
 
-visibility = {
-  'util-sidebar': cfg.get('interface.sidebar_open_on_start'),
-  'term-sidebar': False
-}
 
-class TuiApp(App):
-  # priority=True so split/pane keys still fire while MessageInput (TextArea) or editors are focused.
+# Keybind mixins must not subclass DOMNode if they appear before App: _css_bases would skip App
+# and drop its DEFAULT_CSS. Merge BINDINGS explicitly instead of relying on _merge_bindings.
+class TuiApp(WorkspaceAppKeybindsMixin, AppShellKeybindsMixin, App):
   BINDINGS = [
-    ('ctrl+d', 'toggle_visible("util-sidebar")', 'Toggle Sidebar'),
-    ('ctrl+t', 'toggle_visible("term-sidebar")', 'Toggle Terminal'),
-    Binding('ctrl+w', 'close_active_tab', 'Close Tab', priority=True),
-    Binding('ctrl+shift+p', 'close_active_pane', 'Close Pane', priority=True),
-    Binding('ctrl+n', 'new_chat_tab', 'New Chat Tab', priority=True),
-    Binding('ctrl+v', 'split_vertical', 'Split Vertical', priority=True),
-    Binding('ctrl+h', 'split_horizontal', 'Split Horizontal', priority=True),
-    Binding('ctrl+right', 'focus_next_pane', 'Next Pane', priority=True),
-    Binding('ctrl+left', 'focus_previous_pane', 'Previous Pane', priority=True),
+    *AppShellKeybindsMixin.BINDINGS,
+    *WorkspaceAppKeybindsMixin.BINDINGS,
   ]
   CSS_PATH = _css_paths
 
@@ -124,114 +139,17 @@ class TuiApp(App):
         chat_data = await db_manager.get_chat(event.chat_id)
         await workspace.add_tab(ChatTab(cfg, chat_id=event.chat_id, chat_data=chat_data, title=event.title))
 
-  def action_toggle_visible(self, id):
-    visibility[id] = not visibility[id]
-    widget = self.query_one(f'#{id}')
-    widget.set_class(visibility[id], '-visible')
-    if hasattr(widget, '_custom_bindings') and widget._custom_bindings:
-      for binding in widget._custom_bindings:
-        keys = binding[0]
-        action = binding[1]
-        desc = binding[2] if len(binding) > 2 else ""
-        if visibility[id]:
-          self.bind(keys, action, description=desc)
-        elif hasattr(self, '_bindings') and keys in self._bindings.key_to_bindings:
-          self._bindings.key_to_bindings[keys] = [
-              b for b in self._bindings.key_to_bindings[keys] if b.action != action
-          ]
-          if not self._bindings.key_to_bindings[keys]:
-              del self._bindings.key_to_bindings[keys]
-      if hasattr(self, 'refresh_bindings'):
-          self.refresh_bindings()
-    if visibility[id] and id == 'term-sidebar':
-        self.set_timer(0.05, widget.start_terminal)
-        widget.query_one("#terminal_bash").focus()
-
-  async def action_close_active_tab(self):
+  @on(OpenChatWithSeedMessage)
+  async def handle_open_chat_with_seed(self, event: OpenChatWithSeedMessage) -> None:
     workspace = self.query_one(Workspace)
-    await workspace.close_active_tab()
+    tab = ChatTab(cfg)
+    await workspace.add_tab(tab)
 
-  async def action_close_active_pane(self):
-    workspace = self.query_one(Workspace)
-    await workspace.close_active_pane()
+    def run_seed() -> None:
+      msg_box = tab.query_one(MsgBox)
+      msg_box.run_conversation_from_text(event.user_message)
 
-  async def action_new_chat_tab(self):
-    workspace = self.query_one(Workspace)
-    await workspace.add_tab(ChatTab(cfg))
-
-  async def action_split_vertical(self):
-    workspace = self.query_one(Workspace)
-    await workspace.split_vertical()
-
-  async def action_split_horizontal(self):
-    workspace = self.query_one(Workspace)
-    await workspace.split_horizontal()
-
-  def action_focus_next_pane(self):
-    workspace = self.query_one(Workspace)
-    workspace.focus_next_pane()
-
-  def action_focus_previous_pane(self):
-    workspace = self.query_one(Workspace)
-    workspace.focus_previous_pane()
-
-  def action_send_terminal_to_chat(self):
-    self.trigger_send_terminal()
-
-  def on_send_terminal_chat(self, event=None):
-    self.trigger_send_terminal()
-
-  def trigger_send_terminal(self):
-    try:
-        terminal = self.query_one("#terminal_bash", CustomTerminal)
-        terminal_text = terminal.get_all_text()
-    except Exception:
-        return
-
-    def check_modal_result(question: str | None):
-        if question is None:
-            return
-        
-        msg_content = ""
-        if question.strip():
-            msg_content += f"{question.strip()}\n\n"
-        msg_content += f"```terminal\n{terminal_text}\n```"
-
-        try:
-            workspace = self.query_one(Workspace)
-            active_pane = workspace.active_pane
-            if not active_pane:
-                return
-            active_tab_id = active_pane.tabs.active
-            if not active_tab_id:
-                return
-            
-            active_tab = active_pane.tabs.query_one(f"#{active_tab_id}", TabPane)
-            if not isinstance(active_tab, ChatTab):
-                # Not a chat tab, maybe create one?
-                return
-                
-            chat_box = active_tab.query_one(MsgBox)
-            
-            msgs = [*chat_box.messages, {"role": "user", "content": msg_content}]
-            placeholder_id = f"pending_{len(msgs)}"
-            msgs.append({
-                "id": placeholder_id,
-                "role": "assistant",
-                "content": "Thinking…",
-                "loading": True,
-            })
-
-            chat_box.messages = msgs
-
-            self.run_worker(
-                chat_box.get_agent_response(msg_content, placeholder_id),
-                exclusive=False,
-            )
-        except Exception as e:
-            print(f"Failed to send to chat: {e}")
-
-    self.push_screen(InputModal("Ask a question about the terminal context (optional)"), check_modal_result)
+    tab.call_later(run_seed)
 
 
 async def main():

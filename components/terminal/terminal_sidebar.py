@@ -99,12 +99,14 @@ class CustomTerminal(Terminal):
         self._screen.resize(self.nrow, self.ncol)
 
     async def on_key(self, event: events.Key) -> None:
-        if event.key in ["ctrl+i", "ctrl+t", "ctrl+s"]:
+        # Terminal consumes keys before app BINDINGS run; mirror AppShellKeybindsMixin
+        # (ctrl+grave_accent / ctrl+t) plus send-to-chat (ctrl+i).
+        if event.key in ["ctrl+i", "ctrl+t", "ctrl+grave_accent"]:
             if event.key == "ctrl+i":
                 self.app.action_send_terminal_to_chat()
             elif event.key == "ctrl+t":
                 self.app.action_toggle_visible("term-sidebar")
-            elif event.key == "ctrl+s":
+            elif event.key == "ctrl+grave_accent":
                 self.app.action_toggle_visible("util-sidebar")
             event.prevent_default()
             event.stop()

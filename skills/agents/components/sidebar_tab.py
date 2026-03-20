@@ -7,11 +7,11 @@ from textual.app import ComposeResult
 from textual.containers import Vertical, Horizontal
 from textual.widgets import Button, Label, DataTable
 from textual import on
-from textual.widgets._data_table import RowKey
 
 from components.utils.form_modal import FormModal
 from components.utils.input_modal import InputModal
 from utils.db import db_manager
+from utils.icons import AGENTS
 import utils.icons as icons
 
 AGENT_SCHEMA = [
@@ -24,6 +24,9 @@ AGENT_SCHEMA = [
   {"key": "tool_groups",   "label": "Tool Groups (comma-separated)", "type": "text",     "placeholder": "e.g. system, git"},
   {"key": "system_prompt", "label": "System Prompt",                 "type": "textarea"},
 ]
+
+sidebar_label = AGENTS
+sidebar_tooltip = "Agents"
 
 
 class AgentsSidebarTab(Vertical):
@@ -156,3 +159,7 @@ class AgentsSidebarTab(Vertical):
     )
     self.app.notify(f"Agent '{data['name']}' saved.")
     await self._refresh()
+
+
+def get_sidebar_widget():
+  return AgentsSidebarTab()

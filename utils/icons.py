@@ -7,6 +7,7 @@ GIT = ""
 DB = ""
 SKILLS = ""
 AGENTS = "󱙺"
+POSTIT = "󰖟"
 SETTINGS = ""
 
 # Selection
@@ -18,6 +19,7 @@ CLEAR_SELECTION = "󰄷"
 # Actions
 DELETE = "󰛌"
 EDIT = ""
+AI_HANDOFF = "󰚩"  # nf-md-robot — hand todo to chat / agent
 NEW_FILE = ""
 NEW_FOLDER = ""
 RUN = ""
