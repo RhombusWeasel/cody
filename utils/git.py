@@ -13,12 +13,37 @@ def is_git_repo(path: str) -> bool:
     return False
 
 
+def _gitignore_covers_agents(line: str) -> bool:
+  s = line.strip()
+  if not s or s.startswith("#"):
+    return False
+  return s == ".agents" or s == ".agents/" or s.startswith(".agents/")
+
+
 def ensure_git_repo(path: str) -> bool:
   """Initialize git repo if not already one. Returns True if repo exists."""
   if is_git_repo(path):
     return True
   try:
     git.Repo.init(path)
+    os.makedirs(os.path.join(path, ".agents"), exist_ok=True)
+    gitignore_path = os.path.join(path, ".gitignore")
+    need_agents_rule = True
+    if os.path.isfile(gitignore_path):
+      with open(gitignore_path, encoding="utf-8", errors="replace") as f:
+        for line in f:
+          if _gitignore_covers_agents(line):
+            need_agents_rule = False
+            break
+    if need_agents_rule:
+      prefix = ""
+      if os.path.isfile(gitignore_path) and os.path.getsize(gitignore_path) > 0:
+        with open(gitignore_path, "rb") as rf:
+          rf.seek(-1, os.SEEK_END)
+          if rf.read(1) != b"\n":
+            prefix = "\n"
+      with open(gitignore_path, "a", encoding="utf-8") as f:
+        f.write(prefix + ".agents/\n")
     return True
   except Exception:
     return False
