@@ -1,14 +1,19 @@
 """Git tree component for the sidebar."""
 from typing import Any, Callable
 
+import git
 from textual.message import Message
 
 from components.tree import GenericTree
-from components.input_modal import InputModal
+from components.git.git_tree_actions import handle_git_action
 from utils.cfg_man import cfg
-from utils import git_viewer
 from utils.tree_model import TreeEntry
-from utils.icons import GIT_ICON_SET, CHECKED, UNCHECKED, SELECT_ALL, CLEAR_SELECTION, GIT_DISCARD, GIT_IGNORE, GIT_CHERRY_PICK, GIT_BRANCH, RUN, DELETE, GIT_ADD, GIT_UNSTAGE
+from utils.git import get_file_status, get_branches_info, get_recent_commits, get_stashes
+from utils.icons import (
+  GIT_ICON_SET, CHECKED, UNCHECKED, SELECT_ALL, CLEAR_SELECTION,
+  GIT_DISCARD, GIT_IGNORE, GIT_CHERRY_PICK, GIT_BRANCH, RUN, DELETE,
+  GIT_ADD, GIT_UNSTAGE, GIT_MERGE, GIT_REVERT, EDIT,
+)
 
 
 class SelectionChanged(Message, bubble=True):
@@ -20,17 +25,21 @@ def _get_working_dir() -> str:
 
 
 class GitTree(GenericTree):
-  """Flat git tree - branches, changes, commits."""
+  """Flat git tree - branches, changes, commits, stashes."""
 
   def __init__(self, selected_for_action: set[str] | None = None, **kwargs):
     self._selected_for_action = selected_for_action or set()
+    self.staged_paths: set[str] = set()
+    self.unstaged_paths: set[str] = set()
+    self.untracked_paths: set[str] = set()
     super().__init__(icon_set=GIT_ICON_SET, **kwargs)
     self._expanded.update([
       ("cat", "branches"),
       ("cat", "staged"),
       ("cat", "changes"),
       ("cat", "untracked"),
-      ("cat", "commits")
+      ("cat", "commits"),
+      ("cat", "stashes"),
     ])
 
   def _build_category(
@@ -91,11 +100,9 @@ class GitTree(GenericTree):
     result: list[TreeEntry] = []
     wd = _get_working_dir()
 
-    branches = git_viewer.get_branches(wd)
-    status_list = git_viewer.get_status(wd)
-    commits = git_viewer.get_commits(wd, 15)
-
-    if not branches and not status_list:
+    try:
+      repo = git.Repo(wd)
+    except git.exc.InvalidGitRepositoryError:
       result.append(TreeEntry(
         node_id={"type": "empty"},
         indent="",
@@ -106,9 +113,17 @@ class GitTree(GenericTree):
       ))
       return result
 
-    staged_list = [s for s in status_list if s["staged"]]
-    unstaged_list = [s for s in status_list if not s["staged"] and s["status"] != "??"]
-    untracked_list = [s for s in status_list if not s["staged"] and s["status"] == "??"]
+    branches = get_branches_info(repo)
+    status = get_file_status(repo)
+    staged_list = [{"path": s["path"], "status": s["status"], "staged": True} for s in status["staged"]]
+    unstaged_list = [{"path": s["path"], "status": s["status"], "staged": False} for s in status["unstaged"]]
+    untracked_list = [{"path": s["path"], "status": s["status"], "staged": False} for s in status["untracked"]]
+    commits = get_recent_commits(repo, 15)
+    stashes = get_stashes(repo)
+
+    self.staged_paths = {s["path"] for s in staged_list}
+    self.unstaged_paths = {s["path"] for s in unstaged_list}
+    self.untracked_paths = {s["path"] for s in untracked_list}
 
     result.extend(self._build_category(
       cat_id="branches",
@@ -168,191 +183,106 @@ class GitTree(GenericTree):
       items=commits,
       empty_text="(none)",
       icon_name="commit",
-      is_last_category=True,
+      is_last_category=False,
       item_formatter=lambda c: (
         {"type": "commit", "hash": c["full_hash"], "short": c["hash"], "message": c["message"], "time": c["time"]},
         f"{c['hash']} {c['time']}"
       )
     ))
 
+    result.extend(self._build_category(
+      cat_id="stashes",
+      display_name="Stashes",
+      items=stashes,
+      empty_text="(none)",
+      icon_name="stash",
+      is_last_category=True,
+      item_formatter=lambda s: (
+        {"type": "stash", "index": s["index"], "message": s["message"]},
+        s["message"]
+      )
+    ))
+
     return result
 
   def get_node_buttons(self, node_id, is_expandable) -> list:
+    from components.utils.buttons import ActionButton, EditButton, DeleteButton, RunButton
     btns = []
+
     if node_id == ("cat", "staged"):
-      staged_list = [s for s in git_viewer.get_status(_get_working_dir()) if s["staged"]]
-      all_selected = bool(staged_list) and all(s["path"] in self._selected_for_action for s in staged_list)
+      all_selected = bool(self.staged_paths) and self.staged_paths.issubset(self._selected_for_action)
       icon = CLEAR_SELECTION if all_selected else SELECT_ALL
       action = "clear_selection" if all_selected else "select_all_staged"
       tooltip = "Clear selection" if all_selected else "Select all staged"
-      btns.append(self._make_btn(icon, tooltip, action))
+      btns.append(ActionButton(icon, action=lambda n=node_id, a=action: self.on_button_action(n, a), tooltip=tooltip, classes="action-btn"))
       return btns
+
     if node_id == ("cat", "changes"):
-      unstaged_list = [s for s in git_viewer.get_status(_get_working_dir()) if not s["staged"] and s["status"] != "??"]
-      all_selected = bool(unstaged_list) and all(s["path"] in self._selected_for_action for s in unstaged_list)
+      all_selected = bool(self.unstaged_paths) and self.unstaged_paths.issubset(self._selected_for_action)
       icon = CLEAR_SELECTION if all_selected else SELECT_ALL
       action = "clear_selection" if all_selected else "select_all_changes"
       tooltip = "Clear selection" if all_selected else "Select all changes"
-      btns.append(self._make_btn(icon, tooltip, action))
+      btns.append(ActionButton(icon, action=lambda n=node_id, a=action: self.on_button_action(n, a), tooltip=tooltip, classes="action-btn"))
       return btns
+
     if node_id == ("cat", "untracked"):
-      untracked_list = [s for s in git_viewer.get_status(_get_working_dir()) if not s["staged"] and s["status"] == "??"]
-      all_selected = bool(untracked_list) and all(s["path"] in self._selected_for_action for s in untracked_list)
+      all_selected = bool(self.untracked_paths) and self.untracked_paths.issubset(self._selected_for_action)
       icon = CLEAR_SELECTION if all_selected else SELECT_ALL
       action = "clear_selection" if all_selected else "select_all_untracked"
       tooltip = "Clear selection" if all_selected else "Select all untracked"
-      btns.append(self._make_btn(icon, tooltip, action))
+      btns.append(ActionButton(icon, action=lambda n=node_id, a=action: self.on_button_action(n, a), tooltip=tooltip, classes="action-btn"))
       return btns
+
     if isinstance(node_id, dict) and node_id.get("type") == "change":
       path = node_id.get("path", "")
       staged = node_id.get("staged", False)
       untracked = node_id.get("untracked", False)
       label = CHECKED if path in self._selected_for_action else UNCHECKED
-      
+
       if staged:
-        btns.append(self._make_btn(GIT_UNSTAGE, "Unstage file", "unstage_file"))
-      elif untracked:
-        btns.append(self._make_btn(GIT_ADD, "Stage file", "stage_file"))
-        
-      btns.append(self._make_btn(GIT_DISCARD, "Discard changes", "discard"))
-      btns.append(self._make_btn(GIT_IGNORE, "Add to .gitignore", "add_to_gitignore"))
-      btns.append(self._make_btn(label, "Toggle for commit/stage/unstage", "toggle_select"))
+        btns.append(ActionButton(GIT_UNSTAGE, action=lambda n=node_id: self.on_button_action(n, "unstage_file"), tooltip="Unstage file", classes="action-btn"))
+      else:
+        btns.append(ActionButton(GIT_ADD, action=lambda n=node_id: self.on_button_action(n, "stage_file"), tooltip="Stage file", classes="action-btn"))
+
+      btns.append(ActionButton(GIT_DISCARD, action=lambda n=node_id: self.on_button_action(n, "discard"), tooltip="Discard changes", classes="action-btn"))
+      btns.append(ActionButton(GIT_IGNORE, action=lambda n=node_id: self.on_button_action(n, "add_to_gitignore"), tooltip="Add to .gitignore", classes="action-btn"))
+      btns.append(ActionButton(label, action=lambda n=node_id: self.on_button_action(n, "toggle_select"), tooltip="Toggle for commit/stage/unstage", classes="action-btn"))
       return btns
+
     if isinstance(node_id, dict) and node_id.get("type") == "commit":
-      btns.append(self._make_btn(GIT_CHERRY_PICK, "Cherry-pick", "cherry_pick"))
-      btns.append(self._make_btn(GIT_BRANCH, "Create branch", "create_branch"))
+      btns.append(ActionButton(GIT_CHERRY_PICK, action=lambda n=node_id: self.on_button_action(n, "cherry_pick"), tooltip="Cherry-pick", classes="action-btn"))
+      btns.append(ActionButton(GIT_REVERT, action=lambda n=node_id: self.on_button_action(n, "revert_commit"), tooltip="Revert commit", classes="action-btn"))
+      btns.append(ActionButton(GIT_BRANCH, action=lambda n=node_id: self.on_button_action(n, "create_branch"), tooltip="Create branch", classes="action-btn"))
       return btns
+
     if isinstance(node_id, dict) and node_id.get("type") == "branch":
-      btns.append(self._make_btn(RUN, "Switch to branch", "checkout_branch_btn"))
-      btns.append(self._make_btn(DELETE, "Delete branch", "delete_branch"))
+      btns.append(RunButton(action=lambda n=node_id: self.on_button_action(n, "checkout_branch_btn"), tooltip="Switch to branch"))
+      btns.append(ActionButton(GIT_MERGE, action=lambda n=node_id: self.on_button_action(n, "merge_branch"), tooltip="Merge into current", classes="action-btn"))
+      btns.append(EditButton(action=lambda n=node_id: self.on_button_action(n, "rename_branch"), tooltip="Rename branch"))
+      btns.append(DeleteButton(action=lambda n=node_id: self.on_button_action(n, "delete_branch"), tooltip="Delete branch"))
       return btns
+
+    if isinstance(node_id, dict) and node_id.get("type") == "stash":
+      btns.append(RunButton(action=lambda n=node_id: self.on_button_action(n, "pop_stash"), tooltip="Pop stash"))
+      btns.append(DeleteButton(action=lambda n=node_id: self.on_button_action(n, "drop_stash"), tooltip="Drop stash"))
+      return btns
+
     return []
 
   def on_button_action(self, node_id: Any, action: str) -> None:
     wd = _get_working_dir()
-    if action == "toggle_select" and isinstance(node_id, dict) and node_id.get("type") == "change":
-      path = node_id.get("path", "")
-      if path in self._selected_for_action:
-        self._selected_for_action.discard(path)
-      else:
-        self._selected_for_action.add(path)
-      self.reload()
-      self.post_message(SelectionChanged())
+    try:
+      repo = git.Repo(wd)
+    except git.exc.InvalidGitRepositoryError:
       return
-    if action == "stage_file" and isinstance(node_id, dict) and node_id.get("type") == "change":
-      path = node_id["path"]
-      if git_viewer.stage(wd, path):
-        self.app.notify(f"Staged {path}")
-        self.reload()
-      else:
-        self.app.notify(f"Failed to stage {path}", severity="error")
-      return
-    if action == "unstage_file" and isinstance(node_id, dict) and node_id.get("type") == "change":
-      path = node_id["path"]
-      if git_viewer.unstage(wd, path):
-        self.app.notify(f"Unstaged {path}")
-        self.reload()
-      else:
-        self.app.notify(f"Failed to unstage {path}", severity="error")
-      return
-    if action == "select_all_staged":
-      for s in git_viewer.get_status(wd):
-        if s["staged"]:
-          self._selected_for_action.add(s["path"])
-      self.reload()
-      self.post_message(SelectionChanged())
-      return
-    if action == "select_all_changes":
-      for s in git_viewer.get_status(wd):
-        if not s["staged"] and s["status"] != "??":
-          self._selected_for_action.add(s["path"])
-      self.reload()
-      self.post_message(SelectionChanged())
-      return
-    if action == "select_all_untracked":
-      for s in git_viewer.get_status(wd):
-        if not s["staged"] and s["status"] == "??":
-          self._selected_for_action.add(s["path"])
-      self.reload()
-      self.post_message(SelectionChanged())
-      return
-    if action == "clear_selection":
-      self._selected_for_action.clear()
-      self.reload()
-      self.post_message(SelectionChanged())
-      return
-    if action == "discard" and isinstance(node_id, dict) and node_id.get("type") == "change":
-      path = node_id["path"]
 
-      def cb(ok: bool | None) -> None:
-        if ok and git_viewer.discard(wd, path):
-          self._selected_for_action.discard(path)
-          self.app.notify("Discarded")
-          self.reload()
-          self.post_message(SelectionChanged())
-        elif ok:
-          self.app.notify("Discard failed", severity="error")
-
-      self.app.push_screen(InputModal(f"Discard changes in {path}?", confirm_only=True), cb)
-      return
-    if action == "add_to_gitignore" and isinstance(node_id, dict) and node_id.get("type") == "change":
-      path = node_id["path"]
-      if git_viewer.add_to_gitignore(wd, path):
-        self.app.notify(f"Added {path} to .gitignore")
-        self.reload()
-      else:
-        self.app.notify("Failed to add to .gitignore", severity="error")
-      return
-    if action == "cherry_pick" and isinstance(node_id, dict) and node_id.get("type") == "commit":
-      commit_hash = node_id["hash"]
-      short = node_id.get("short", commit_hash[:7])
-
-      def cb(ok: bool | None) -> None:
-        if ok and git_viewer.cherry_pick(wd, commit_hash):
-          self.app.notify("Cherry-picked")
-          self.reload()
-        elif ok:
-          self.app.notify("Cherry-pick failed (conflicts?)", severity="error")
-
-      self.app.push_screen(InputModal(f"Cherry-pick {short}?", confirm_only=True), cb)
-      return
-    if action == "create_branch" and isinstance(node_id, dict) and node_id.get("type") == "commit":
-      commit_hash = node_id["hash"]
-      short = node_id.get("short", commit_hash[:7])
-
-      def cb(name: str | None) -> None:
-        if name and name.strip():
-          if git_viewer.create_branch(wd, name.strip(), from_commit=commit_hash):
-            self.app.notify(f"Created branch {name.strip()}")
-            self.reload()
-          else:
-            self.app.notify("Create branch failed", severity="error")
-
-      self.app.push_screen(InputModal(f"Branch name from {short}", initial_value=""), cb)
-      return
-    if action == "checkout_branch_btn" and isinstance(node_id, dict) and node_id.get("type") == "branch":
-      name = node_id["name"]
-      if node_id.get("is_current"):
-        self.app.notify(f"Already on {name}", severity="information")
-        return
-      success, err_msg = git_viewer.checkout_branch(wd, name)
-      if success:
-        self.app.notify(f"Switched to {name}")
-        self.reload()
-      else:
-        self.app.notify(f"Checkout failed: {err_msg}", severity="error")
-      return
-    if action == "delete_branch" and isinstance(node_id, dict) and node_id.get("type") == "branch":
-      name = node_id["name"]
-      if node_id.get("is_current"):
-        self.app.notify(f"Cannot delete current branch {name}", severity="error")
-        return
-      def cb_delete(ok: bool | None) -> None:
-        if ok and git_viewer.delete_branch(wd, name, force=True):
-          self.app.notify(f"Deleted branch {name}")
-          self.reload()
-        elif ok:
-          self.app.notify(f"Failed to delete branch {name}", severity="error")
-
-      self.app.push_screen(InputModal(f"Delete branch {name}?", confirm_only=True), cb_delete)
-      return
+    handle_git_action(
+      app=self.app,
+      repo=repo,
+      wd=wd,
+      node_id=node_id,
+      action=action,
+      selected=self._selected_for_action,
+      reload_cb=self.reload,
+      selection_changed_cb=lambda: self.post_message(SelectionChanged()),
+    )

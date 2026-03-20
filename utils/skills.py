@@ -1,7 +1,8 @@
 import os
 import re
+import json
 from pathlib import Path
-from utils.cfg_man import cfg
+from utils.cfg_man import cfg, deep_update
 
 def parse_frontmatter(content: str) -> tuple[dict, str]:
     """
@@ -45,12 +46,11 @@ class SkillManager:
         Later directories in the list override skills from earlier directories.
         """
         self.skills = {}
-        cody_app_dir = Path(__file__).parent.parent
         working_dir = cfg.get('session.working_directory', os.getcwd())
         
         default_dirs = [
-            "~/.agents/skills",
             "$CODY_DIR/skills",
+            "~/.agents/skills",
             "{working_directory}/.agents/skills"
         ]
         
@@ -64,14 +64,8 @@ class SkillManager:
         if not isinstance(directories, list):
             directories = default_dirs
             
-        search_paths = []
-        for d in directories:
-            # Replace placeholders
-            d = d.replace('$CODY_DIR', str(cody_app_dir))
-            d = d.replace('{working_directory}', str(working_dir))
-            # Expand ~ to user home
-            d = os.path.expanduser(d)
-            search_paths.append(Path(d))
+        from utils.paths import resolve_dir_templates
+        search_paths = [Path(d) for d in resolve_dir_templates(directories, working_dir)]
         
         for base_path in search_paths:
             if not base_path.exists() or not base_path.is_dir():
@@ -105,6 +99,16 @@ class SkillManager:
                         if not enabled_config[name]:
                             continue
                             
+                    skill_config_path = skill_dir / 'config.json'
+                    if skill_config_path.exists():
+                        try:
+                            with open(skill_config_path, 'r', encoding='utf-8') as f:
+                                skill_defaults = json.load(f)
+                            existing = cfg.data.get(name, {})
+                            cfg.data[name] = deep_update(skill_defaults, existing)
+                        except Exception as e:
+                            print(f"Error loading skill config {skill_config_path}: {e}")
+                
                     self.skills[name] = {
                         'name': name,
                         'description': description,
@@ -112,6 +116,7 @@ class SkillManager:
                         'base_dir': str(skill_dir),
                         'body': body
                     }
+
                 except Exception as e:
                     print(f"Error loading skill {skill_file}: {e}")
 

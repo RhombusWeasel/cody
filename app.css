@@ -18,6 +18,30 @@ Chat {
   background: $surface;
 }
 
+Workspace {
+  height: 1fr;
+  min-height: 0;
+  width: 1fr;
+  background: $surface;
+}
+
+Workspace #workspace_root {
+  height: 1fr;
+  width: 100%;
+  min-height: 0;
+}
+
+/* Bounded row between header and footer so workspace/splits don't grow with content */
+#app_body {
+  height: 1fr;
+  min-height: 0;
+}
+
+#main_row {
+  height: 1fr;
+  min-height: 0;
+}
+
 Collapsible {
   background: $panel;
   padding: 0 1 1 0;

@@ -8,19 +8,17 @@ from textual.widgets import Button, Label
 from textual import on
 
 from components.tree import GenericTree, NodeSelected
-from components.input_modal import InputModal
+from components.utils.input_modal import InputModal
 from utils.skills import skill_manager
-from utils import fs_tree
+from utils import fs_tree, file_ops
 from utils.tree_model import TreeEntry
-from utils.icons import SKILL_ICON_SET, FILE_ICONS
-from utils.editors import open_file_editor
-
+import utils.icons as icons
 
 class SkillsTree(GenericTree):
   """Skills tree with file-tree view for scripts/ and components/."""
 
   def __init__(self, **kwargs):
-    super().__init__(icon_set=SKILL_ICON_SET, **kwargs)
+    super().__init__(icon_set=icons.SKILL_ICON_SET, **kwargs)
 
   def get_visible_entries(self) -> list[TreeEntry]:
     result: list[TreeEntry] = []
@@ -89,13 +87,19 @@ class SkillsTree(GenericTree):
             fs_tree.path_entries_to_tree(
               result, path, ext + child_ext, self._expanded,
               self.BRANCH, self.LAST_BRANCH, self.VERTICAL, self.SPACER,
-              folder_icon=self.icon("folder"), file_icon=self.icon("file"), file_icons=FILE_ICONS,
+              folder_icon=self.icon("folder"), file_icon=self.icon("file"), file_icons=icons.FILE_ICONS,
             )
 
     return result
 
   def get_node_buttons(self, node_id, is_expandable) -> list[Button]:
+    if isinstance(node_id, Path):
+      return file_ops.node_buttons(is_expandable, lambda action: self.on_button_action(node_id, action))
     return []
+
+  def on_button_action(self, node_id, action: str) -> None:
+    if isinstance(node_id, Path):
+      file_ops.handle_action(self.app, node_id, action, self._refresh)
 
 
 
@@ -106,11 +110,12 @@ class ToolList(Container):
     self._last_snapshot = None
 
   def compose(self) -> ComposeResult:
+    from components.utils.buttons import AddButton
     with Vertical():
-      yield Label("Skills", classes="header")
+      yield Label(f"{icons.SKILLS}  Skills", classes="header")
       with VerticalScroll():
         yield SkillsTree(id="skills_tree")
-      yield Button("Add Skill", id="add_skill_btn", variant="primary")
+      yield AddButton(action=self.on_add_skill, label="Add Skill", id="add_skill_btn", variant="primary")
 
   def on_mount(self) -> None:
     self._refresh_tree(force=True)
@@ -128,14 +133,10 @@ class ToolList(Container):
   @on(NodeSelected)
   def on_skill_node_selected(self, event: NodeSelected) -> None:
     node_id = event.node_id
-    if isinstance(node_id, dict):
-      if node_id.get("kind") == "edit_skill":
-        path = node_id.get("path")
-        if path and os.path.exists(path):
-          self._open_skill_editor(path)
-      return
-    if isinstance(node_id, Path) and node_id.is_file():
-      self._open_file_editor(node_id)
+    if isinstance(node_id, dict) and node_id.get("kind") == "edit_skill":
+      path = node_id.get("path")
+      if path and os.path.exists(path):
+        self._open_skill_editor(path)
 
   def _open_skill_editor(self, path: str) -> None:
     with open(path, "r", encoding="utf-8") as f:
@@ -159,16 +160,13 @@ class ToolList(Container):
       save_skill,
     )
 
-  def _open_file_editor(self, path: Path) -> None:
-    open_file_editor(self.app, path, on_saved=lambda: self._refresh_tree(force=True))
-
-  @on(Button.Pressed, "#add_skill_btn")
   def on_add_skill(self) -> None:
     def check_name(name: str | None) -> None:
       if not name or not name.strip():
         return
       name = name.strip()
-      project_dir = Path(os.getcwd())
+      from utils.cfg_man import cfg
+      project_dir = Path(cfg.get('session.working_directory', os.getcwd()))
       skill_dir = project_dir / ".agents" / "skills" / name
       skill_dir.mkdir(parents=True, exist_ok=True)
       skill_file = skill_dir / "SKILL.md"

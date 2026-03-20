@@ -54,7 +54,8 @@ def discover_sidebar_tabs():
       if not tooltip or not isinstance(tooltip, str):
         tooltip = label
 
-      tab_id = f"tab-skill-{name}"
+      safe_name = name.replace(' ', '-').replace('_', '-')
+      tab_id = f"tab-skill-{safe_name}"
       result.append((tab_id, label, factory, tooltip))
     except Exception as e:
       print(f"Error loading skill sidebar component {name}: {e}")

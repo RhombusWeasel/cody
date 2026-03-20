@@ -10,6 +10,16 @@ def load_data(path):
     with open(path, 'r')as f:
         return json.loads(f.read())
 
+def discover_css(directory, relative_to=None):
+  paths = []
+  for root, dirs, files in os.walk(directory):
+    dirs.sort()
+    for file in sorted(files):
+      if file.endswith('.css'):
+        full = os.path.join(root, file)
+        paths.append(os.path.relpath(full, relative_to) if relative_to else full)
+  return paths
+
 def load_folder(path, filetype='.json'):
     filedata = {}
     if os.path.isdir(path):

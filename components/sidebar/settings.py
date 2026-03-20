@@ -1,140 +1,317 @@
+"""Settings sidebar tab - one SettingsTree per top-level config section."""
 from textual.app import ComposeResult
-from textual.containers import VerticalScroll, Vertical, Horizontal
-from textual.widgets import Label, Collapsible, Input, Switch, TextArea, Button
+from textual.containers import VerticalScroll, Vertical
+from textual.widgets import Input, Switch, Label
 from textual import on
 
+from components.tree.generic_tree import GenericTree
+from components.utils.input_modal import InputModal
+from components.utils.form_modal import FormModal
+from utils.tree_model import TreeEntry
 from utils.cfg_man import cfg
-from utils.icons import DELETE
+import utils.icons as icons
+
+SECTION_ICONS: dict[str, str] = {
+    "session":    icons.SETTINGS,
+    "providers":  icons.CHATS,
+    "interface":  icons.FILE_SYSTEM,
+    "prompts":    icons.EDIT,
+    "skills":     icons.SKILLS,
+    "db":         icons.DB,
+}
 
 
-class SettingsMenu(VerticalScroll):
+def _is_password_field(path: str) -> bool:
+    key = path.split('.')[-1].lower()
+    return any(x in key for x in ("password", "token", "api_key", "secret"))
 
-    def __init__(self, **kwargs):
+
+def _is_focused_within(widget) -> bool:
+    focused = widget.app.focused
+    if focused is None:
+        return False
+    node = focused
+    while node is not None:
+        if node is widget:
+            return True
+        node = node.parent
+    return False
+
+
+class SettingsTree(GenericTree):
+    """Config editor tree for a single top-level config section."""
+
+    def __init__(self, section_key: str, icon: str, **kwargs):
         super().__init__(**kwargs)
-        self.collapsed_state = {}
+        self._section_key = section_key
+        self._section_icon = icon
 
-    def compose(self) -> ComposeResult:
-        yield from self.build_settings(cfg.data)
+    # --- tree entry building ---
 
-    async def refresh_settings(self):
-        await self.remove_children()
-        await self.mount(*self.build_settings(cfg.data))
+    def get_visible_entries(self) -> list[TreeEntry]:
+        entries = []
+        val = cfg.data.get(self._section_key)
+        is_exp = self._section_key in self._expanded
 
-    def build_settings(self, data: dict, path: str = "") -> list:
-        widgets = []
-        for key, val in data.items():
-            current_path = f"{path}.{key}" if path else key
-            
+        entries.append(TreeEntry(
+            node_id=self._section_key,
+            indent="",
+            is_expandable=True,
+            is_expanded=is_exp,
+            display_name=self._section_key.replace('_', ' ').title(),
+            icon=self._section_icon,
+        ))
+
+        if is_exp and val is not None:
             if isinstance(val, dict):
-                is_collapsed = self.collapsed_state.get(current_path, False)
-                widgets.append(Collapsible(*self.build_settings(val, current_path), title=key.title(), collapsed=is_collapsed, id=f"col_{current_path.replace('.', '__')}"))
-            elif isinstance(val, bool):
-                widgets.append(Horizontal(
-                    Label(key, classes="setting-item-label"), 
-                    Switch(value=val, id=f"setting_{current_path.replace('.', '__')}", classes="setting-item-switch"),
-                    classes="setting-item"
-                ))
+                self._walk(val, self._section_key, [], entries)
             elif isinstance(val, list):
-                list_widgets = []
-                for i, item in enumerate(val):
-                    item_path = f"{current_path}.{i}"
-                    if isinstance(item, dict):
-                        item_widgets = self.build_settings(item, item_path)
-                        item_widgets.append(Button("Delete Item", id=f"del_list_item_{item_path.replace('.', '__')}", variant="error"))
-                        is_collapsed = self.collapsed_state.get(item_path, True)
-                        list_widgets.append(Collapsible(*item_widgets, title=f"Item {i}", collapsed=is_collapsed, id=f"col_{item_path.replace('.', '__')}"))
+                self._walk_list(val, self._section_key, [], entries)
+
+        return entries
+
+    def _build_indent(self, ancestors_last: list[bool]) -> str:
+        return "".join(self.SPACER if last else self.VERTICAL for last in ancestors_last)
+
+    def _walk(self, data: dict, path: str, ancestors_last: list[bool], entries: list) -> None:
+        items = list(data.items())
+        for i, (key, val) in enumerate(items):
+            is_last = i == len(items) - 1
+            node_path = f"{path}.{key}"
+            indent = self._build_indent(ancestors_last)
+            branch = self.LAST_BRANCH if is_last else self.BRANCH
+            label = str(key).replace('_', ' ').title()
+
+            if isinstance(val, (dict, list)):
+                is_exp = node_path in self._expanded
+                entries.append(TreeEntry(
+                    node_id=node_path,
+                    indent=indent + branch,
+                    is_expandable=True,
+                    is_expanded=is_exp,
+                    display_name=label,
+                    icon=icons.FOLDER,
+                ))
+                if is_exp:
+                    if isinstance(val, dict):
+                        self._walk(val, node_path, ancestors_last + [is_last], entries)
+                    elif node_path == "db.connections":
+                        self._walk_conn_list(val, node_path, ancestors_last + [is_last], entries)
                     else:
-                        list_widgets.append(Horizontal(
-                            Input(value=str(item), id=f"setting_{item_path.replace('.', '__')}", classes="setting-list-input"),
-                            Button(DELETE, variant="error", id=f"del_list_item_{item_path.replace('.', '__')}", classes="setting-list-del-btn"),
-                            classes="setting-list-row"
-                        ))
-                list_widgets.append(Button("Add Item", id=f"add_list_item_{current_path.replace('.', '__')}", variant="primary", classes="setting-list-add-btn"))
-                is_collapsed = self.collapsed_state.get(current_path, False)
-                widgets.append(Collapsible(*list_widgets, title=key.title(), collapsed=is_collapsed, id=f"col_{current_path.replace('.', '__')}"))
-            elif isinstance(val, str) and "\n" in val:
-                widgets.append(Vertical(
-                    Label(key, classes="setting-item-label"),
-                    TextArea(text=val, id=f"setting_{current_path.replace('.', '__')}", classes="setting-item-text-area"),
-                    classes="setting-item"
-                ))
+                        self._walk_list(val, node_path, ancestors_last + [is_last], entries)
             else:
-                is_password = "password" in key.lower() or "token" in key.lower() or "api_key" in key.lower()
-                widgets.append(Horizontal(
-                    Label(key, classes="setting-item-label"),
-                    Input(value=str(val), password=is_password, id=f"setting_{current_path.replace('.', '__')}", classes="setting-item-input"),
-                    classes="setting-item"
+                entries.append(TreeEntry(
+                    node_id=node_path,
+                    indent=indent + branch,
+                    is_expandable=False,
+                    is_expanded=False,
+                    display_name=str(key).replace('_', ' '),
+                    icon=icons.FILE,
                 ))
-        return widgets
 
-    @on(TextArea.Changed)
-    def on_text_area_changed(self, event: TextArea.Changed) -> None:
-        text_id = event.text_area.id
-        if text_id and text_id.startswith("setting_"):
-            path = text_id.replace("setting_", "", 1).replace("__", ".")
-            cfg.set(path, event.text_area.text)
+    def _walk_list(self, lst: list, path: str, ancestors_last: list[bool], entries: list) -> None:
+        for i, item in enumerate(lst):
+            is_last = i == len(lst) - 1
+            item_path = f"{path}.{i}"
+            indent = self._build_indent(ancestors_last)
+            branch = self.LAST_BRANCH if is_last else self.BRANCH
 
-    @on(Button.Pressed)
-    async def on_button_pressed(self, event: Button.Pressed) -> None:
-        btn_id = event.button.id
-        if not btn_id:
-            return
-            
-        if btn_id.startswith("del_list_item_"):
-            path = btn_id.replace("del_list_item_", "").replace("__", ".")
-            parts = path.split('.')
+            if isinstance(item, dict):
+                is_exp = item_path in self._expanded
+                entries.append(TreeEntry(
+                    node_id=item_path,
+                    indent=indent + branch,
+                    is_expandable=True,
+                    is_expanded=is_exp,
+                    display_name=f"Item {i}",
+                    icon=icons.FOLDER,
+                ))
+                if is_exp:
+                    self._walk(item, item_path, ancestors_last + [is_last], entries)
+            else:
+                entries.append(TreeEntry(
+                    node_id=item_path,
+                    indent=indent + branch,
+                    is_expandable=False,
+                    is_expanded=False,
+                    display_name="",
+                    icon=icons.FILE,
+                ))
+
+    def _walk_conn_list(self, lst: list, path: str, ancestors_last: list[bool], entries: list) -> None:
+        for i, item in enumerate(lst):
+            is_last = i == len(lst) - 1
+            item_path = f"{path}.{i}"
+            indent = self._build_indent(ancestors_last)
+            branch = self.LAST_BRANCH if is_last else self.BRANCH
+            label = (
+                item.get("label") or item.get("path", f"Connection {i}")
+            ) if isinstance(item, dict) else str(item)
+            entries.append(TreeEntry(
+                node_id=item_path,
+                indent=indent + branch,
+                is_expandable=False,
+                is_expanded=False,
+                display_name=label,
+                icon=icons.DB,
+            ))
+
+    # --- editor widgets per node ---
+
+    def _is_conn_item(self, node_id: str) -> bool:
+        parts = node_id.split('.')
+        return parts[-1].isdigit() and '.'.join(parts[:-1]) == "db.connections"
+
+    def get_node_buttons(self, node_id: str, is_expandable: bool) -> list:
+        from components.utils.buttons import EditButton, DeleteButton, AddButton
+        if node_id == self._section_key:
+            return []
+
+        if self._is_conn_item(node_id):
+            return [
+                EditButton(action=lambda n=node_id: self.on_button_action(n, "edit_conn"), tooltip="Edit connection", classes="action-btn settings-edit-btn"),
+                DeleteButton(action=lambda n=node_id: self.on_button_action(n, "delete"), tooltip="Delete connection", classes="action-btn settings-del-btn"),
+            ]
+
+        val = cfg.get(node_id)
+        parts = node_id.split('.')
+        is_list_item = parts[-1].isdigit()
+
+        if isinstance(val, dict):
+            if is_list_item:
+                return [DeleteButton(action=lambda n=node_id: self.on_button_action(n, "delete"), tooltip="Delete item", classes="action-btn settings-del-btn")]
+            return []
+
+        if isinstance(val, list):
+            return [AddButton(action=lambda n=node_id: self.on_button_action(n, "add"), tooltip="Add item", classes="action-btn settings-add-btn")]
+
+        if is_list_item:
+            return [
+                Input(
+                    value=str(val) if val is not None else "",
+                    password=_is_password_field(node_id),
+                    classes="settings-input",
+                ),
+                DeleteButton(action=lambda n=node_id: self.on_button_action(n, "delete"), tooltip="Delete", classes="action-btn settings-del-btn"),
+            ]
+
+        if isinstance(val, bool):
+            return [Switch(value=val, classes="settings-switch")]
+
+        if isinstance(val, str) and '\n' in val:
+            return [EditButton(action=lambda n=node_id: self.on_button_action(n, "edit"), tooltip="Edit", classes="action-btn settings-edit-btn")]
+
+        return [Input(
+            value=str(val) if val is not None else "",
+            password=_is_password_field(node_id),
+            classes="settings-input",
+        )]
+
+    # --- actions ---
+
+    def on_button_action(self, node_id: str, action: str) -> None:
+        if action == "edit_conn":
+            val = cfg.get(node_id)
+            if not isinstance(val, dict):
+                return
+            schema = [
+                {"key": "label", "label": "Label", "type": "text", "placeholder": "e.g. Production DB"},
+                {"key": "path", "label": "Path / URL", "type": "text", "required": True},
+                {"key": "type", "label": "Type", "type": "text", "placeholder": "e.g. sqlite3"},
+            ]
+
+            def _save(result: dict | None) -> None:
+                if result:
+                    cfg.set(node_id, result)
+                    cfg.changed = False
+                    self.reload()
+
+            self.app.push_screen(FormModal("Edit Connection", schema=schema, args=val, callback=_save))
+
+        elif action == "add":
+            lst = cfg.get(node_id)
+            if not isinstance(lst, list):
+                return
+            new_item = {k: "" for k in lst[0].keys()} if lst and isinstance(lst[0], dict) else ""
+            lst.append(new_item)
+            cfg.set(node_id, lst)
+            cfg.changed = False
+            self._expanded.add(node_id)
+            self.reload()
+
+        elif action == "delete":
+            parts = node_id.split('.')
             if not parts[-1].isdigit():
                 return
-            index = int(parts[-1])
+            idx = int(parts[-1])
             list_path = '.'.join(parts[:-1])
-            
             lst = cfg.get(list_path)
-            if isinstance(lst, list) and index < len(lst):
-                lst.pop(index)
+            if isinstance(lst, list) and idx < len(lst):
+                lst.pop(idx)
                 cfg.set(list_path, lst)
-                await self.refresh_settings()
-                
-        elif btn_id.startswith("add_list_item_"):
-            path = btn_id.replace("add_list_item_", "").replace("__", ".")
-            lst = cfg.get(path)
-            if isinstance(lst, list):
-                if len(lst) > 0 and isinstance(lst[0], dict):
-                    new_item = {k: "" for k in lst[0].keys()}
-                    lst.append(new_item)
-                else:
-                    lst.append("")
-                cfg.set(path, lst)
-                await self.refresh_settings()
+                cfg.changed = False
+                self.reload()
+
+        elif action == "edit":
+            val = cfg.get(node_id)
+            title = node_id.split('.')[-1].replace('_', ' ').title()
+
+            def _save(new_val: str | None) -> None:
+                if new_val is not None:
+                    cfg.set(node_id, new_val)
+                    cfg.changed = False
+
+            self.app.push_screen(
+                InputModal(title, initial_value=str(val or ""), multiline=True),
+                _save,
+            )
 
     @on(Input.Changed)
-    def on_input_changed(self, event: Input.Changed) -> None:
-        input_id = event.input.id
-        if input_id and input_id.startswith("setting_"):
-            path = input_id.replace("setting_", "", 1).replace("__", ".")
-            # Try to infer original type (int, float, etc) or keep as str
-            val = event.value
+    def _on_input_changed(self, event: Input.Changed) -> None:
+        path = getattr(event.input, 'node_id', None)
+        if path is None:
+            return
+        val: str | int | float = event.value
+        original = cfg.get(path)
+        if isinstance(original, int):
             try:
-                # Basic type guessing for numbers if the original was a number
-                original_val = cfg.get(path)
-                if isinstance(original_val, int):
-                    val = int(val)
-                elif isinstance(original_val, float):
-                    val = float(val)
+                val = int(val)
             except ValueError:
                 pass
-                
-            cfg.set(path, val)
+        elif isinstance(original, float):
+            try:
+                val = float(val)
+            except ValueError:
+                pass
+        cfg.set(path, val)
+        cfg.changed = False
 
     @on(Switch.Changed)
-    def on_switch_changed(self, event: Switch.Changed) -> None:
-        switch_id = event.switch.id
-        if switch_id and switch_id.startswith("setting_"):
-            path = switch_id.replace("setting_", "", 1).replace("__", ".")
-            cfg.set(path, event.value)
+    def _on_switch_changed(self, event: Switch.Changed) -> None:
+        path = getattr(event.switch, 'node_id', None)
+        if path is None:
+            return
+        cfg.set(path, event.value)
+        cfg.changed = False
 
-    @on(Collapsible.Toggled)
-    def on_collapsible_toggled(self, event: Collapsible.Toggled) -> None:
-        col_id = event.collapsible.id
-        if col_id and col_id.startswith("col_"):
-            path = col_id.replace("col_", "", 1).replace("__", ".")
-            self.collapsed_state[path] = event.collapsible.collapsed
+
+class SettingsMenu(Vertical):
+
+    def on_mount(self) -> None:
+        self.set_interval(1.0, self._check_config)
+
+    def _check_config(self) -> None:
+        if not cfg.changed or _is_focused_within(self):
+            return
+        cfg.changed = False
+        for tree in self.query(SettingsTree):
+            tree.reload()
+
+    def compose(self) -> ComposeResult:
+        yield Label("Settings", id="settings-title")
+        with VerticalScroll():
+            for key in cfg.data:
+                yield SettingsTree(
+                    section_key=key,
+                    icon=SECTION_ICONS.get(key, icons.FOLDER),
+                )

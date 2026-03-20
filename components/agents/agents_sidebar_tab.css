@@ -1,0 +1,38 @@
+AgentsSidebarTab {
+  height: 100%;
+  width: 100%;
+}
+
+#agents_tab_title {
+  height: 1;
+  width: 100%;
+  text-style: bold;
+  text-align: center;
+  padding: 0 1;
+  color: $text;
+  background: $surface;
+}
+
+#agents_table {
+  height: 1fr;
+  width: 100%;
+}
+
+#agents_actions {
+  height: 1;
+  width: 100%;
+  padding: 0;
+}
+
+.agent-btn {
+  width: 1fr;
+}
+
+.agent-btn:disabled {
+  color: $text-disabled;
+}
+
+#btn_add_agent {
+  width: 100%;
+  margin: 0;
+}

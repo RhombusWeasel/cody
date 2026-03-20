@@ -31,14 +31,13 @@ def _load_from_dir(commands: dict, d: str) -> None:
                 except Exception as e:
                     print(f"Failed to load command from {file_path}: {e}")
 
-def load_commands(app_dir: str) -> dict[str, CommandBase]:
+def load_commands() -> dict[str, CommandBase]:
     """
     Load commands from tiered directories. Later directories override earlier for same name.
     Uses commands.directories from config, or defaults: built-in, $CODY_DIR/cmd, ~/.agents/commands,
     {working_directory}/.agents/commands.
     """
     commands = {}
-    cody_dir = app_dir
     working_dir = cfg.get('session.working_directory', os.getcwd())
 
     default_dirs = [
@@ -57,10 +56,8 @@ def load_commands(app_dir: str) -> dict[str, CommandBase]:
     if not isinstance(directories, list):
         directories = default_dirs
 
-    for d in directories:
-        d = d.replace('$CODY_DIR', cody_dir)
-        d = d.replace('{working_directory}', working_dir)
-        d = os.path.expanduser(d)
+    from utils.paths import resolve_dir_templates
+    for d in resolve_dir_templates(directories, working_dir):
         _load_from_dir(commands, d)
 
     return commands

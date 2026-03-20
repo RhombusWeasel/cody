@@ -1,5 +1,4 @@
 """Database tree - connections, tables, views, triggers."""
-import os
 from typing import Any, Callable
 
 from textual.widgets import Button
@@ -44,7 +43,7 @@ class DBTree(GenericTree):
         indent=branch,
         is_expandable=True,
         is_expanded=path in self._expanded,
-        display_name=os.path.basename(path),
+        display_name=db_manager.get_label(path),
         icon=self.icon("database"),
       ))
 
@@ -83,12 +82,13 @@ class DBTree(GenericTree):
     return result
 
   def get_node_buttons(self, node_id: Any, is_expandable: bool) -> list[Button]:
+    from components.utils.buttons import RefreshButton, DeleteButton
     if node_id == ROOT_ID:
       return []
     if isinstance(node_id, str):
       return [
-        self._make_btn(REFRESH, "Refresh schema", "refresh"),
-        self._make_btn(DELETE, "Remove connection", "remove"),
+        RefreshButton(action=lambda n=node_id: self.on_button_action(n, "refresh"), tooltip="Refresh schema"),
+        DeleteButton(action=lambda n=node_id: self.on_button_action(n, "remove"), tooltip="Remove connection"),
       ]
     if isinstance(node_id, tuple) and len(node_id) == 2:
       return []

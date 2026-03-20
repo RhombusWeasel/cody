@@ -2,6 +2,14 @@ GenericTree {
     height: auto;
   }
 
-  GenericTree #tree_rows {
+  GenericTree .tree_rows {
     height: auto;
+  }
+
+  GenericTree .tree_rows TreeRow:even {
+    background: $surface;
+  }
+
+  GenericTree .tree_rows TreeRow:odd {
+    background: $surface-lighten-2;
   }

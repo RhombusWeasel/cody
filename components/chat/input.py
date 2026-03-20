@@ -50,7 +50,7 @@ class MessageInput(TextArea):
     self.app.run_worker(self._load_history())
     self.app.run_worker(self._load_files())
     app_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    self.commands = load_commands(app_dir)
+    self.commands = load_commands()
 
   async def _load_files(self):
     from utils.cfg_man import cfg
@@ -244,7 +244,7 @@ class MessageInput(TextArea):
     agent_content = agent_text + appended_files_text if appended_files_text else agent_text
     raw_query = display_content.split("\n\n`")[0].strip() if "\n\n`" in display_content else display_content
     if not any(m.get("role") == "user" for m in box.messages):
-      box.chat_title = raw_query[:15] + "..." if len(raw_query) > 15 else raw_query
+      box.chat_title = raw_query[:30] + "..." if len(raw_query) > 30 else raw_query
     from utils.git import create_checkpoint
     checkpoint_msg = f"Cody checkpoint: {agent_text[:50]}..." if len(agent_text) > 50 else f"Cody checkpoint: {agent_text}"
     git_checkpoint = create_checkpoint(app_dir, checkpoint_msg)

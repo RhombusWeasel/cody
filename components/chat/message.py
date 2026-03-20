@@ -95,10 +95,11 @@ class Message(Widget):
     self.loading = any(b.get('loading') for b in blocks if b['type'] == 'text')
 
   def compose(self):
+    from components.utils.buttons import ActionButton
     with Collapsible(title=self.title, classes=self.title, collapsed=False):
       if self.role == "user" and self.git_checkpoint:
         short_hash = self.git_checkpoint[:7] if len(self.git_checkpoint) >= 7 else self.git_checkpoint
-        yield Button(f"Revert to here ({short_hash})", id="revert_btn", variant="warning", classes="revert-btn")
+        yield ActionButton(f"Revert to here ({short_hash})", action=self.on_revert_pressed, id="revert_btn", variant="warning", classes="action-btn revert-btn")
       for block in self.blocks:
         if block['type'] == 'text':
           if block.get('loading'):
@@ -133,11 +134,10 @@ class Message(Widget):
               md.code_indent_guides = False
               yield md
 
-  @on(Button.Pressed, ".revert-btn")
-  def on_revert_pressed(self, event: Button.Pressed) -> None:
+  def on_revert_pressed(self) -> None:
     if not self.git_checkpoint:
       return
-    from components.input_modal import InputModal
+    from components.utils.input_modal import InputModal
     from components.chat.chat import MsgBox
     from components.chat.input import MessageInput
     from utils.cfg_man import cfg

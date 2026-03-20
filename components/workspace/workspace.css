@@ -1,0 +1,25 @@
+Pane {
+    border: solid $background;
+    width: 1fr;
+    min-width: 0;
+    height: 1fr;
+    min-height: 0;
+}
+
+Pane.-active-pane {
+    border: solid $accent;
+}
+
+Pane TabbedContent {
+    height: 1fr;
+    min-height: 0;
+}
+
+/* Split wrappers created at runtime must stay inside the workspace box */
+.workspace-split-stack,
+.workspace-split-row {
+    height: 1fr;
+    min-height: 0;
+    width: 1fr;
+    min-width: 0;
+}

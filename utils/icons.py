@@ -6,6 +6,7 @@ FILE_SYSTEM = ""
 GIT = ""
 DB = ""
 SKILLS = ""
+AGENTS = "󱙺"
 SETTINGS = ""
 
 # Selection
@@ -43,6 +44,11 @@ GIT_CHERRY_PICK = ""  # nf-fae-cherry
 GIT_ADD = ""  # nf-fa-plus
 GIT_UNSTAGE = ""  # nf-fa-minus
 
+GIT_MERGE = ""  # nf-cod-git_merge
+GIT_STASH = ""  # nf-fa-inbox
+GIT_REVERT = ""  # nf-fa-undo
+GIT_POP_STASH = ""  # nf-fa-arrow-up
+
 # Database tree
 DB_TABLE = ""  # nf-fa-table
 DB_VIEW = "󱤢"  # nf-md-database_eye_outline
@@ -50,31 +56,31 @@ DB_TRIGGER = "󱘽"  # nf-cod-zap
 
 # File type icons (devicons)
 FILE_ICONS = {
-  ".py": "\uE73C",
-  ".lua": "\ue826",
-  ".js": "\uf2ef",
-  ".ts": "\uE69D",
-  ".html": "\uE60E",
-  ".css": "\uE614",
-  ".json": "\uE60B",
-  ".md": "\uE609",
-  ".yaml": "\uE8EB",
-  ".yml": "\uE8EB",
-  ".toml": "\uE6B2",
-  ".rs": "\uE7A8",
-  ".go": "\uE627",
-  ".c": "\uE61E",
-  ".cpp": "\uE61D",
-  ".sh": "\uE760",
-  ".png": "\uF1C5",
-  ".jpg": "\uF1C5",
-  ".jpeg": "\uF1C5",
-  ".gif": "\uF1C5",
-  ".bmp": "\uF1C5",
-  ".tiff": "\uF1C5",
-  ".ico": "\uF1C5",
-  ".webp": "\uF1C5",
-  ".svg": "\uF1C5",
+  ".py": "",
+  ".lua": "",
+  ".js": "",
+  ".ts": "",
+  ".html": "",
+  ".css": "",
+  ".json": "",
+  ".md": "",
+  ".yaml": "",
+  ".yml": "",
+  ".toml": "",
+  ".rs": "",
+  ".go": "",
+  ".c": "",
+  ".cpp": "",
+  ".sh": "",
+  ".png": "",
+  ".jpg": "",
+  ".jpeg": "",
+  ".gif": "",
+  ".bmp": "",
+  ".tiff": "",
+  ".ico": "",
+  ".webp": "",
+  ".svg": "",
 }
 
 # Default icon set for GenericTree - subclasses can override via icon_set param
@@ -105,6 +111,7 @@ GIT_ICON_SET = {
   "branch": GIT_BRANCH,
   "change": GIT_CHANGE,
   "commit": GIT_COMMIT,
+  "stash": GIT_STASH,
 }
 
 SKILL_ICON_SET = {

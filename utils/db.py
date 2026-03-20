@@ -7,16 +7,18 @@ from utils.cfg_man import cfg
 class DatabaseManager:
     def __init__(self):
         self.connections = {}
+        self.conn_meta: dict[str, dict] = {}
         self.load_connections()
         self._init_project_db()
 
     def get_project_db_path(self):
-        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        agents_dir = os.path.join(root_dir, ".agents")
+        from utils.paths import get_cody_dir
+        agents_dir = os.path.join(get_cody_dir(), ".agents")
         return os.path.join(agents_dir, "cody_data.db")
 
     def _init_project_db(self):
-        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        from utils.paths import get_cody_dir
+        root_dir = get_cody_dir()
         agents_dir = os.path.join(root_dir, ".agents")
         os.makedirs(agents_dir, exist_ok=True)
 
@@ -27,7 +29,11 @@ class DatabaseManager:
             shutil.copy2(old_db, db_path)
         
         db_path = self.get_project_db_path()
-        self.add_connection(db_path, save=True)
+        self.add_connection(db_path, conn_type="sqlite3", save=True)
+        meta = self.conn_meta.get(db_path, {})
+        if not meta.get("label"):
+            self.conn_meta[db_path] = {**meta, "label": "Cody Data"}
+            self._save_connections()
         
         # Initialize tables
         conn = self.connections[db_path]
@@ -47,6 +53,30 @@ class DatabaseManager:
                 user_input TEXT
             )
         ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS agents (
+                id TEXT PRIMARY KEY,
+                name TEXT UNIQUE,
+                description TEXT,
+                system_prompt TEXT,
+                tool_groups TEXT,
+                provider TEXT,
+                model TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS todos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                label TEXT,
+                scope TEXT,
+                todo_text TEXT,
+                creation_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                deadline TIMESTAMP,
+                status TEXT DEFAULT 'pending',
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
 
     def load_connections(self):
         saved_connections = cfg.get("db.connections", [])
@@ -62,7 +92,8 @@ class DatabaseManager:
             saved_connections = []
             needs_save = True
             
-        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        from utils.paths import get_cody_dir
+        root_dir = get_cody_dir()
         old_db_path = os.path.join(root_dir, ".cody", "data.db")
         new_db_path = self.get_project_db_path()
 
@@ -70,9 +101,13 @@ class DatabaseManager:
             # Handle legacy string format
             if isinstance(conn_data, str):
                 path = conn_data
+                label = None
+                conn_type = "sqlite3"
                 needs_save = True
             elif isinstance(conn_data, dict):
                 path = conn_data.get("path")
+                label = conn_data.get("label") or None
+                conn_type = conn_data.get("type", "sqlite3")
             else:
                 continue
 
@@ -82,32 +117,39 @@ class DatabaseManager:
 
             if path:
                 try:
-                    self.add_connection(path, save=False)
+                    self.add_connection(path, label=label, conn_type=conn_type, save=False)
                 except Exception as e:
                     print(f"Failed to load database connection {path}: {e}")
                     
         if needs_save:
             self._save_connections()
 
-    def add_connection(self, path: str, save: bool = True):
+    def add_connection(self, path: str, label: str | None = None, conn_type: str = "sqlite3", save: bool = True):
         if path not in self.connections:
             self.connections[path] = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
+            self.conn_meta[path] = {"label": label or "", "type": conn_type}
             if save:
                 self._save_connections()
+
+    def get_label(self, path: str) -> str:
+        meta = self.conn_meta.get(path, {})
+        return meta.get("label") or os.path.basename(path)
 
     def remove_connection(self, path: str):
         if path in self.connections:
             self.connections[path].close()
             del self.connections[path]
+            self.conn_meta.pop(path, None)
             self._save_connections()
 
     def _save_connections(self):
         connections_data = []
         for path in self.connections.keys():
-            connections_data.append({
-                "path": path,
-                "type": "sqlite3"
-            })
+            meta = self.conn_meta.get(path, {})
+            entry = {"path": path, "type": meta.get("type", "sqlite3")}
+            if meta.get("label"):
+                entry["label"] = meta["label"]
+            connections_data.append(entry)
         cfg.set("db.connections", connections_data)
 
     async def execute(self, path: str, query: str, params: tuple = ()):
@@ -184,5 +226,57 @@ class DatabaseManager:
         db_path = self.get_project_db_path()
         query = 'DELETE FROM chats WHERE id = ?'
         await self.execute(db_path, query, (str(chat_id),))
+
+    async def get_agents(self):
+        db_path = self.get_project_db_path()
+        query = 'SELECT id, name, description, tool_groups, provider, model, updated_at FROM agents ORDER BY name'
+        columns, rows = await self.execute(db_path, query)
+        return [
+            {"id": r[0], "name": r[1], "description": r[2],
+             "tool_groups": r[3], "provider": r[4], "model": r[5], "updated_at": r[6]}
+            for r in rows
+        ]
+
+    async def get_agent_by_name(self, name: str):
+        db_path = self.get_project_db_path()
+        query = 'SELECT id, name, description, system_prompt, tool_groups, provider, model FROM agents WHERE name = ?'
+        columns, rows = await self.execute(db_path, query, (name,))
+        if rows:
+            r = rows[0]
+            return {"id": r[0], "name": r[1], "description": r[2],
+                    "system_prompt": r[3], "tool_groups": r[4], "provider": r[5], "model": r[6]}
+        return None
+
+    async def get_agent_by_name_or_id(self, id_or_name: str):
+        db_path = self.get_project_db_path()
+        query = 'SELECT id, name, description, system_prompt, tool_groups, provider, model FROM agents WHERE id = ? OR name = ?'
+        columns, rows = await self.execute(db_path, query, (id_or_name, id_or_name))
+        if rows:
+            r = rows[0]
+            return {"id": r[0], "name": r[1], "description": r[2],
+                    "system_prompt": r[3], "tool_groups": r[4], "provider": r[5], "model": r[6]}
+        return None
+
+    async def save_agent(self, agent_id: str, name: str, description: str,
+                         system_prompt: str, tool_groups: str, provider: str, model: str):
+        db_path = self.get_project_db_path()
+        query = '''
+            INSERT INTO agents (id, name, description, system_prompt, tool_groups, provider, model, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(id) DO UPDATE SET
+                name=excluded.name,
+                description=excluded.description,
+                system_prompt=excluded.system_prompt,
+                tool_groups=excluded.tool_groups,
+                provider=excluded.provider,
+                model=excluded.model,
+                updated_at=CURRENT_TIMESTAMP
+        '''
+        await self.execute(db_path, query, (agent_id, name, description, system_prompt, tool_groups, provider, model))
+
+    async def delete_agent(self, agent_id: str):
+        db_path = self.get_project_db_path()
+        query = 'DELETE FROM agents WHERE id = ?'
+        await self.execute(db_path, query, (str(agent_id),))
 
 db_manager = DatabaseManager()

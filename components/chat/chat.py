@@ -13,7 +13,7 @@ import json
 
 from components.chat.input import MessageInput
 from components.chat.message import Message
-from components.input_modal import InputModal
+from components.utils.input_modal import InputModal
 
 
 def _group_assistant_tool_messages(msgs: list, show_tool: bool = True) -> list:
@@ -180,60 +180,30 @@ class MsgBox(Widget):
     await db_manager.save_chat(self.chat_id, title, self.actor.msg)
 
 
-class Chat(Widget):
-    def __init__(self, config, **kwargs):
+class ChatTab(TabPane):
+    def __init__(self, config, chat_id=None, chat_data=None, title=None, **kwargs):
         self.config = config
-        super().__init__(**kwargs)
+        self.chat_id = chat_id or str(uuid.uuid1())
+        self.chat_data = chat_data
+        self.chat_title = title
+        
+        if not self.chat_title:
+            self.chat_title = "New Chat"
+            if self.chat_data:
+                for msg in self.chat_data:
+                    if msg['role'] == 'user':
+                        self.chat_title = msg['content'][:30] + "..." if len(msg['content']) > 30 else msg['content']
+                        break
+                        
+        super().__init__(self.chat_title, id=f"tab-{self.chat_id}", **kwargs)
 
     def compose(self):
-        yield TabbedContent(id="chat_tabs")
-
-    async def on_mount(self):
-        await self.add_chat_tab()
-
-    async def add_chat_tab(self, chat_id=None, chat_data=None, title=None):
-        tabs = self.query_one("#chat_tabs", TabbedContent)
-        
-        if chat_id:
-            for tab in tabs.query(TabPane):
-                if tab.id == f"tab-{chat_id}":
-                    tabs.active = f"tab-{chat_id}"
-                    return
-
-        new_chat_id = chat_id or str(uuid.uuid1())
         actor = Agent()
-        if chat_data:
-            actor.msg = chat_data
+        if self.chat_data:
+            actor.msg = self.chat_data
             
-        if not title:
-            title = "New Chat"
-            if chat_data:
-                for msg in chat_data:
-                    if msg['role'] == 'user':
-                        title = msg['content'][:15] + "..." if len(msg['content']) > 15 else msg['content']
-                        break
-
-        msg_box = MsgBox(actor, self.config, chat_id=new_chat_id)
-        if chat_data and title != "New Chat":
-            msg_box.chat_title = title
+        msg_box = MsgBox(actor, self.config, chat_id=self.chat_id)
+        if self.chat_data and self.chat_title != "New Chat":
+            msg_box.chat_title = self.chat_title
             
-        pane_id = f"tab-{new_chat_id}"
-        new_pane = TabPane(title, msg_box, id=pane_id)
-        await tabs.add_pane(new_pane)
-        tabs.active = pane_id
-
-    async def close_current_tab(self):
-        import inspect
-        tabs = self.query_one("#chat_tabs", TabbedContent)
-        active_pane_id = tabs.active
-        if not active_pane_id:
-            return
-            
-        result = tabs.remove_pane(active_pane_id)
-        if inspect.isawaitable(result):
-            await result
-        
-        # If no tabs remain, active will be empty or None
-        # Also check if it's the last pane being removed
-        if not tabs.active or len(list(tabs.query(TabPane))) == 0:
-            await self.add_chat_tab()
+        yield msg_box

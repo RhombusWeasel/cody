@@ -198,7 +198,8 @@ class TerminalSidebar(VerticalScroll):
         ]
 
     def compose(self):
-        yield Button("Send to Chat", id="btn_send_terminal_chat", variant="primary")
+        from components.utils.buttons import ActionButton
+        yield ActionButton("Send to Chat", action=self.app.on_send_terminal_chat, id="btn_send_terminal_chat", variant="primary", classes="action-btn")
         yield CustomTerminal(command="bash", id="terminal_bash")
 
     def on_mount(self) -> None:

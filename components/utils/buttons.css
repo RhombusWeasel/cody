@@ -1,0 +1,44 @@
+/* Global utility button styles */
+.action-btn {
+    min-width: 3;
+    height: 1;
+    padding: 0 1;
+    margin: 0;
+    border: none;
+    background: transparent;
+    color: $text-muted;
+  }
+  
+  .action-btn:hover {
+    background: $surface-lighten-2;
+    color: $text;
+  }
+  
+  .action-btn.delete-btn,
+  .action-btn.remove-btn {
+    color: $primary;
+  }
+  
+  .action-btn.delete-btn:hover,
+  .action-btn.remove-btn:hover {
+    background: $primary;
+    color: $text;
+  }
+  
+  .action-btn.edit-btn {
+    color: $primary;
+  }
+  
+  .action-btn.edit-btn:hover {
+    background: $primary;
+    color: $text;
+  }
+  
+  .action-btn.add-btn {
+    color: $success;
+  }
+  
+  .action-btn.add-btn:hover {
+    background: $success;
+    color: $text;
+  }
