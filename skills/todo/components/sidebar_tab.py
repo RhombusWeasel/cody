@@ -8,6 +8,7 @@ from utils.db import db_manager
 from utils.paths import canonical_todo_scope
 from components.utils.buttons import AddButton
 from skills.todo.components.todo_tree import TodoTree
+from skills.todo.scripts import todo_store
 
 sidebar_label = "󱛡"
 sidebar_tooltip = "Manage Todos"
@@ -36,29 +37,50 @@ class TodoSidebarTab(Vertical):
         schema = [
             {"key": "label", "label": "Label", "required": True},
             {"key": "todo_text", "label": "Details", "type": "textarea"},
-            {"key": "deadline", "label": "Deadline (optional)"}
+            {"key": "deadline", "label": "Deadline (optional)"},
+            {
+                "key": "comments",
+                "label": "Comments (JSON array of strings)",
+                "type": "code",
+                "language": "json",
+            },
         ]
-        
+
         def on_save(values: dict):
+            enc, err = todo_store.normalize_comments_json(values.get("comments") or "[]")
+            if err:
+                self.app.notify(err, severity="error")
+                return
+            values["comments"] = enc
             self.save_new_todo(scope, values)
-            
-        modal = FormModal(f"Add {'Global' if scope == 'global' else 'Local'} Todo", schema, callback=on_save)
+
+        modal = FormModal(
+            f"Add {'Global' if scope == 'global' else 'Local'} Todo",
+            schema,
+            args={"comments": "[]"},
+            callback=on_save,
+        )
         self.app.push_screen(modal)
 
     @work
     async def save_new_todo(self, scope: str, values: dict) -> None:
         db_path = db_manager.get_project_db_path()
         query = '''
-            INSERT INTO todos (label, scope, todo_text, deadline)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO todos (label, scope, todo_text, deadline, comments)
+            VALUES (?, ?, ?, ?, ?)
         '''
         try:
-            await db_manager.execute(db_path, query, (
-                values.get("label"), 
-                scope, 
-                values.get("todo_text"), 
-                values.get("deadline")
-            ))
+            await db_manager.execute(
+                db_path,
+                query,
+                (
+                    values.get("label"),
+                    scope,
+                    values.get("todo_text"),
+                    values.get("deadline") or None,
+                    values.get("comments") or "[]",
+                ),
+            )
             
             # Reload the appropriate tree
             tree_id = "#global_todo_tree" if scope == "global" else "#local_todo_tree"

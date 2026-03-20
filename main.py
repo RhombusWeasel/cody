@@ -1,5 +1,40 @@
-import os
+import argparse
 import asyncio
+import os
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+  'working_directory',
+  nargs='?',
+  default='.',
+  type=str,
+  help='The working directory',
+)
+parser.add_argument(
+  '--encrypt-config',
+  action='store_true',
+  help='Encrypt plaintext JSON configs to .enc (PBKDF2+Fernet), then exit.',
+)
+parser.add_argument(
+  '--config-password-file',
+  default=None,
+  metavar='PATH',
+  help='Read config decryption password from file (non-interactive).',
+)
+args = parser.parse_args()
+
+args.working_directory = os.path.abspath(
+  os.getcwd() if args.working_directory == '.' else args.working_directory
+)
+
+from utils.cfg_man import cfg, ensure_config_loaded
+
+ensure_config_loaded(
+  args.working_directory,
+  encrypt_config=args.encrypt_config,
+  config_password_file=args.config_password_file,
+)
+
 from textual import on
 from textual.app import App
 from components.chat.chat import ChatTab, MsgBox
@@ -10,7 +45,6 @@ from components.terminal.terminal_sidebar import TerminalSidebar
 from textual.containers import Horizontal, Vertical
 
 import utils.fs as fs
-from utils.cfg_man import cfg
 from utils.db import db_manager
 from components.sidebar.chat_history import ChatHistoryTab, OpenChatWithSeedMessage
 
@@ -18,22 +52,13 @@ from utils.theme_man import discover_themes
 
 from components.workspace.workspace_app_mixin import WorkspaceAppKeybindsMixin
 from components.app_shell_keybinds import AppShellKeybindsMixin
+from utils.layout_visibility import init_sidebar_state_from_cfg
 
-import argparse
-parser = argparse.ArgumentParser()
-parser.add_argument('working_directory', type=str, help='The working directory', default='.')
-args = parser.parse_args()
-
-show_system_messages = cfg.get('interface.show_system_messages')
-if args.working_directory == '.':
-  args.working_directory = os.getcwd()
-else:
-  args.working_directory = args.working_directory
-
-cfg.load_project_config(args.working_directory)
 cfg.set('session.working_directory', args.working_directory)
+init_sidebar_state_from_cfg()
 
 from utils.git import ensure_git_repo
+
 ensure_git_repo(args.working_directory)
 
 from utils.skills import skill_manager
@@ -56,6 +81,7 @@ from utils.paths import get_tiered_paths
 for tool_path in get_tiered_paths('tools', args.working_directory):
   if os.path.exists(tool_path):
     fs.load_folder(tool_path, '.py')
+
 
 # Keybind mixins must not subclass DOMNode if they appear before App: _css_bases would skip App
 # and drop its DEFAULT_CSS. Merge BINDINGS explicitly instead of relying on _merge_bindings.

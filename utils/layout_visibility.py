@@ -1,11 +1,15 @@
 """Sidebar open/closed state and toggle logic shared by app keybind mixins."""
 
-from utils.cfg_man import cfg
-
 sidebar_visibility: dict[str, bool] = {
-  'util-sidebar': cfg.get('interface.sidebar_open_on_start'),
+  'util-sidebar': True,
   'term-sidebar': False,
 }
+
+
+def init_sidebar_state_from_cfg() -> None:
+  from utils.cfg_man import cfg
+
+  sidebar_visibility['util-sidebar'] = bool(cfg.get('interface.sidebar_open_on_start'))
 
 
 def toggle_sidebar_on_app(app, sidebar_id: str) -> None:

@@ -7,6 +7,7 @@ GIT = ""
 DB = ""
 SKILLS = ""
 AGENTS = "󱙺"
+POSTIT = "󰖟"
 SETTINGS = ""
 
 # Selection

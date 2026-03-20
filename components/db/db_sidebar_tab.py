@@ -1,4 +1,5 @@
 import csv
+import json
 import os
 from textual.app import ComposeResult
 from textual.containers import Vertical, Horizontal, VerticalScroll
@@ -14,6 +15,65 @@ from utils.db import db_manager
 from utils.icons import EXPORT_CSV, OPEN_EXTERNAL, RUN
 
 
+def _auth_dict_from_form(result: dict) -> dict:
+  """Build db.connections[].auth from Add Connection form keys."""
+  method = (result.get("auth_method") or "none").strip().lower()
+  has_pw = any(
+    str(result.get(k, "") or "").strip()
+    for k in (
+      "auth_username",
+      "auth_password",
+      "auth_password_env",
+      "auth_password_cfg",
+      "auth_username_env",
+      "auth_username_cfg",
+    )
+  )
+  has_tok = any(
+    str(result.get(k, "") or "").strip()
+    for k in ("auth_token", "auth_token_env", "auth_token_cfg")
+  )
+  if method == "none":
+    if has_tok:
+      method = "token"
+    elif has_pw:
+      method = "password"
+  auth: dict = {}
+  if method != "none":
+    auth["method"] = method
+  if method == "password":
+    pairs = (
+      ("username", "auth_username"),
+      ("password", "auth_password"),
+      ("password_env", "auth_password_env"),
+      ("password_cfg", "auth_password_cfg"),
+      ("username_env", "auth_username_env"),
+      ("username_cfg", "auth_username_cfg"),
+    )
+    for dest, src in pairs:
+      v = str(result.get(src, "") or "").strip()
+      if v:
+        auth[dest] = v
+  elif method == "token":
+    for dest, src in (
+      ("token", "auth_token"),
+      ("token_env", "auth_token_env"),
+      ("token_cfg", "auth_token_cfg"),
+    ):
+      v = str(result.get(src, "") or "").strip()
+      if v:
+        auth[dest] = v
+  raw_ssl = str(result.get("auth_ssl", "") or "").strip()
+  if raw_ssl:
+    try:
+      parsed = json.loads(raw_ssl)
+      if isinstance(parsed, dict):
+        auth["ssl"] = parsed
+    except json.JSONDecodeError:
+      pass
+  return auth
+
+
 class DBSidebarTab(Vertical):
 
 
@@ -26,7 +86,7 @@ class DBSidebarTab(Vertical):
   def _on_db_select(self, path: str) -> None:
     self.selected_db_path = path
     label = self.query_one("#db_selected_label", Label)
-    label.update(f"Selected: {os.path.basename(path)}")
+    label.update(f"Selected: {db_manager.get_label(path)}")
 
   def compose(self) -> ComposeResult:
     from components.utils.buttons import ActionButton, RunButton, AddButton
@@ -56,14 +116,105 @@ class DBSidebarTab(Vertical):
   def on_add_connection(self) -> None:
     schema = [
       {"key": "label", "label": "Label", "type": "text", "placeholder": "e.g. Production DB"},
-      {"key": "path", "label": "Path / URL", "type": "text", "required": True},
-      {"key": "type", "label": "Type", "type": "text", "placeholder": "e.g. sqlite3"},
+      {
+        "key": "path",
+        "label": "DSN / path",
+        "type": "text",
+        "required": True,
+        "placeholder": "File path (sqlite) or URL",
+      },
+      {
+        "key": "type",
+        "label": "Type",
+        "type": "text",
+        "placeholder": "sqlite3",
+      },
+      {
+        "key": "opts",
+        "label": "Options (JSON)",
+        "type": "text",
+        "placeholder": '{"timeout": 30}',
+      },
+      {
+        "key": "auth_method",
+        "label": "Auth method",
+        "type": "text",
+        "placeholder": "none | password | token | dsn",
+      },
+      {
+        "type": "row",
+        "fields": [
+          {"key": "auth_username", "label": "Username", "type": "text", "placeholder": ""},
+          {"key": "auth_password", "label": "Password", "type": "password", "placeholder": ""},
+        ],
+      },
+      {
+        "type": "row",
+        "fields": [
+          {"key": "auth_username_env", "label": "Username env var", "type": "text", "placeholder": ""},
+          {"key": "auth_username_cfg", "label": "Username cfg path", "type": "text", "placeholder": "db.secrets.user"},
+        ],
+      },
+      {
+        "type": "row",
+        "fields": [
+          {"key": "auth_password_env", "label": "Password env var", "type": "text", "placeholder": ""},
+          {"key": "auth_password_cfg", "label": "Password cfg path", "type": "text", "placeholder": "db.secrets.pw"},
+        ],
+      },
+      {
+        "type": "row",
+        "fields": [
+          {"key": "auth_token", "label": "Token", "type": "password", "placeholder": ""},
+          {"key": "auth_token_env", "label": "Token env var", "type": "text", "placeholder": ""},
+        ],
+      },
+      {"key": "auth_token_cfg", "label": "Token cfg path", "type": "text", "placeholder": ""},
+      {
+        "key": "auth_ssl",
+        "label": "SSL (JSON)",
+        "type": "textarea",
+        "placeholder": '{"mode": "require", "rootcert": "/path/ca.pem"}',
+      },
     ]
 
     def on_save(result: dict | None) -> None:
-      if result and result.get("path"):
-        db_manager.add_connection(result["path"], label=result.get("label"), conn_type=result.get("type"))
-        self._refresh_tree()
+      if not result or not result.get("path"):
+        return
+      opts: dict = {}
+      raw_opts = result.get("opts")
+      if raw_opts and str(raw_opts).strip():
+        try:
+          parsed = json.loads(str(raw_opts).strip())
+          if isinstance(parsed, dict):
+            opts = parsed
+          else:
+            self.app.notify("Options must be a JSON object.", severity="warning")
+            return
+        except json.JSONDecodeError:
+          self.app.notify("Invalid JSON in options.", severity="error")
+          return
+      raw_ssl = str(result.get("auth_ssl", "") or "").strip()
+      if raw_ssl:
+        try:
+          json.loads(raw_ssl)
+        except json.JSONDecodeError:
+          self.app.notify("Invalid JSON in SSL.", severity="error")
+          return
+      auth = _auth_dict_from_form(result)
+      conn_type = (result.get("type") or "sqlite3").strip()
+      try:
+        db_manager.add_connection(
+          result["path"],
+          label=result.get("label"),
+          conn_type=conn_type,
+          opts=opts,
+          auth=auth if auth else None,
+        )
+      except ValueError as e:
+        self.app.notify(str(e), severity="error")
+        return
+      self._refresh_tree()
 
     self.app.push_screen(FormModal("Add Connection", schema=schema, callback=on_save))
 

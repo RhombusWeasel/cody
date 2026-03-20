@@ -20,8 +20,27 @@ def main():
     choices=("pending", "completed"),
     help="New status.",
   )
+  p.add_argument(
+    "--completion-note",
+    default=argparse.SUPPRESS,
+    help="Required when --status completed: why the task was closed. Ignored for pending.",
+  )
+  p.add_argument(
+    "--completion-date",
+    default=argparse.SUPPRESS,
+    help="When completing: optional timestamp (e.g. YYYY-MM-DD); default now.",
+  )
   args = p.parse_args()
-  result = todo_store.update_status(args.todo_id, args.status)
+  kw = {}
+  if args.status == "completed":
+    if not hasattr(args, "completion_note") or not str(args.completion_note).strip():
+      p.error("--completion-note is required (non-empty) when using --status completed")
+    kw["completion_note"] = str(args.completion_note).strip()
+    if hasattr(args, "completion_date"):
+      kw["completion_date"] = args.completion_date
+    result = todo_store.update_status(args.todo_id, args.status, **kw)
+  else:
+    result = todo_store.update_status(args.todo_id, args.status)
   print(json.dumps(result, indent=2))
   if result.get("status") != "success":
     sys.exit(1)

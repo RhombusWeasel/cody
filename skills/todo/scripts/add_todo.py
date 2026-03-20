@@ -21,8 +21,19 @@ def main():
   )
   p.add_argument("--text", required=True, help="Detailed description.")
   p.add_argument("--deadline", default=None, help="Optional deadline (e.g. YYYY-MM-DD).")
+  p.add_argument(
+    "--comments",
+    default=None,
+    help='Optional JSON array of strings, e.g. \'["first note"]\'. Default [].',
+  )
   args = p.parse_args()
-  result = todo_store.add_todo(args.label, args.scope, args.text, args.deadline)
+  result = todo_store.add_todo(
+    args.label,
+    args.scope,
+    args.text,
+    args.deadline,
+    comments=args.comments,
+  )
   print(json.dumps(result, indent=2))
   if result.get("status") != "success":
     sys.exit(1)

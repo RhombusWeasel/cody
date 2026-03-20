@@ -1,3 +1,4 @@
+import json
 from typing import Any
 from textual.widgets import Button
 from textual import work
@@ -6,6 +7,7 @@ from components.tree.generic_tree import GenericTree
 from utils.tree_model import TreeEntry
 from utils.db import db_manager
 from utils.paths import canonical_todo_scope, local_todo_scope_match_values
+from skills.todo.scripts import todo_store
 
 
 def _format_todo_handoff_message(label: str, todo_text: str, deadline: str) -> str:
@@ -20,7 +22,8 @@ def _format_todo_handoff_message(label: str, todo_text: str, deadline: str) -> s
     parts.append("")
     parts.append(
         "Please complete this task as described above. When you are done, mark the todo "
-        "completed using the todo skill (activate_skill + run_skill update_todo_status.py)."
+        "completed using the todo skill (activate_skill + run_skill update_todo_status.py); "
+        "a non-empty --completion-note is required when marking completed."
     )
     return "\n".join(parts).strip()
 
@@ -235,19 +238,30 @@ class TodoTree(GenericTree):
     @work
     async def edit_todo(self, node_id: Any) -> None:
         db_path = db_manager.get_project_db_path()
-        query = 'SELECT label, todo_text, deadline FROM todos WHERE id = ?'
+        query = (
+            "SELECT label, todo_text, deadline, completion_note, completion_date, comments "
+            "FROM todos WHERE id = ?"
+        )
         try:
             columns, rows = await db_manager.execute(db_path, query, (node_id,))
             if not rows:
                 return
-            
+
             r = rows[0]
+            raw_comments = r[5] or "[]"
+            try:
+                comments_display = json.dumps(json.loads(raw_comments), indent=2)
+            except (json.JSONDecodeError, TypeError):
+                comments_display = raw_comments
             todo_data = {
                 "label": r[0],
                 "todo_text": r[1] or "",
-                "deadline": r[2] or ""
+                "deadline": r[2] or "",
+                "completion_note": r[3] or "",
+                "completion_date": r[4] or "",
+                "comments": comments_display,
             }
-            
+
             self._show_edit_modal(node_id, todo_data)
         except Exception as e:
             print(f"Failed to fetch todo for edit: {e}")
@@ -258,30 +272,57 @@ class TodoTree(GenericTree):
         schema = [
             {"key": "label", "label": "Label", "required": True},
             {"key": "todo_text", "label": "Details", "type": "textarea"},
-            {"key": "deadline", "label": "Deadline (optional)"}
+            {"key": "deadline", "label": "Deadline (optional)"},
+            {"key": "completion_note", "label": "Completion note (optional)", "type": "textarea"},
+            {
+                "key": "completion_date",
+                "label": "Completion date (optional, e.g. YYYY-MM-DD)",
+                "placeholder": "2025-03-20",
+            },
+            {
+                "key": "comments",
+                "label": "Comments (JSON array of strings)",
+                "type": "code",
+                "language": "json",
+            },
         ]
-        
+
         def on_save(values: dict):
+            enc, err = todo_store.normalize_comments_json(values.get("comments") or "[]")
+            if err:
+                self.app.notify(err, severity="error")
+                return
+            values["comments"] = enc
             self.save_edit(node_id, values)
-            
+
         modal = FormModal("Edit Todo", schema, args=todo_data, callback=on_save)
         self.app.push_screen(modal)
 
     @work
     async def save_edit(self, node_id: Any, values: dict) -> None:
         db_path = db_manager.get_project_db_path()
-        query = '''
-            UPDATE todos 
-            SET label = ?, todo_text = ?, deadline = ?, updated_at = CURRENT_TIMESTAMP 
+        query = """
+            UPDATE todos
+            SET label = ?, todo_text = ?, deadline = ?, completion_note = ?, completion_date = ?,
+                comments = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
-        '''
+        """
         try:
-            await db_manager.execute(db_path, query, (
-                values.get("label"), 
-                values.get("todo_text"), 
-                values.get("deadline"), 
-                node_id
-            ))
+            note = (values.get("completion_note") or "").strip() or None
+            cdate = (values.get("completion_date") or "").strip() or None
+            await db_manager.execute(
+                db_path,
+                query,
+                (
+                    values.get("label"),
+                    values.get("todo_text"),
+                    (values.get("deadline") or "").strip() or None,
+                    note,
+                    cdate,
+                    values.get("comments") or "[]",
+                    node_id,
+                ),
+            )
             self.load_todos()
         except Exception as e:
             print(f"Failed to save edit: {e}")
