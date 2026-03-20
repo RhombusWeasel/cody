@@ -7,6 +7,24 @@ from utils.tree_model import TreeEntry
 from utils.db import db_manager
 from utils.paths import canonical_todo_scope, local_todo_scope_match_values
 
+
+def _format_todo_handoff_message(label: str, todo_text: str, deadline: str) -> str:
+    parts = [f"**Task:** {label}", ""]
+    if todo_text:
+        parts.append(todo_text)
+        parts.append("")
+    if deadline:
+        parts.append(f"**Deadline:** {deadline}")
+        parts.append("")
+    parts.append("---")
+    parts.append("")
+    parts.append(
+        "Please complete this task as described above. When you are done, mark the todo "
+        "completed using the todo skill (activate_skill + run_skill update_todo_status.py)."
+    )
+    return "\n".join(parts).strip()
+
+
 class TodoTree(GenericTree):
     """Tree view for displaying and managing todos for a specific scope."""
 
@@ -111,7 +129,7 @@ class TodoTree(GenericTree):
 
     def get_node_buttons(self, node_id: Any, is_expandable: bool) -> list[Button]:
         from components.utils.buttons import ActionButton, EditButton, DeleteButton
-        from utils.icons import CHECKED, UNCHECKED, FOLDER
+        from utils.icons import AI_HANDOFF, CHECKED, UNCHECKED, FOLDER
         todo = next((t for t in self._todos if t["id"] == node_id), None)
         if not todo:
             return []
@@ -125,13 +143,25 @@ class TodoTree(GenericTree):
         scope_btn_label = FOLDER if is_global else ""
         scope_action = "local" if is_global else "global"
         scope_tooltip = "Move to Local" if is_global else "Move to Global"
-        
-        return [
+
+        buttons: list[Button] = [
             ActionButton(status_btn_label, action=lambda n=node_id, s=status_action: self.on_button_action(n, f"status_{s}"), tooltip=status_tooltip, classes="action-btn"),
+        ]
+        if not is_completed:
+            buttons.append(
+                ActionButton(
+                    AI_HANDOFF,
+                    action=lambda n=node_id: self.on_button_action(n, "handoff_ai"),
+                    tooltip="New chat: hand off to AI",
+                    classes="action-btn",
+                )
+            )
+        buttons.extend([
             ActionButton(scope_btn_label, action=lambda n=node_id, s=scope_action: self.on_button_action(n, f"scope_{s}"), tooltip=scope_tooltip, classes="action-btn"),
             EditButton(action=lambda n=node_id: self.on_button_action(n, "edit")),
-            DeleteButton(action=lambda n=node_id: self.on_button_action(n, "delete"))
-        ]
+            DeleteButton(action=lambda n=node_id: self.on_button_action(n, "delete")),
+        ])
+        return buttons
 
     def on_button_action(self, node_id: Any, action: str) -> None:
         if action.startswith("status_"):
@@ -144,6 +174,27 @@ class TodoTree(GenericTree):
             self.edit_todo(node_id)
         elif action == "delete":
             self.delete_todo(node_id)
+        elif action == "handoff_ai":
+            self.handoff_todo_to_chat(node_id)
+
+    @work
+    async def handoff_todo_to_chat(self, node_id: Any) -> None:
+        from components.sidebar.chat_history import OpenChatWithSeedMessage
+
+        db_path = db_manager.get_project_db_path()
+        query = "SELECT label, todo_text, deadline FROM todos WHERE id = ?"
+        try:
+            _, rows = await db_manager.execute(db_path, query, (node_id,))
+            if not rows:
+                return
+            r = rows[0]
+            label = r[0] or ""
+            body = (r[1] or "").strip()
+            deadline = (r[2] or "").strip()
+            text = _format_todo_handoff_message(label, body, deadline)
+            self.post_message(OpenChatWithSeedMessage(text))
+        except Exception as e:
+            print(f"Failed to hand off todo: {e}")
 
     @work
     async def update_scope(self, node_id: Any, scope_type: str) -> None:

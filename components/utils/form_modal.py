@@ -62,9 +62,9 @@ class FormModal(ModalScreen):
     yield Label(label, classes="field-label")
 
     if field_type == "code":
-      yield TextArea.code_editor(initial, id=widget_id, language=field.get("language"))
+      yield TextArea.code_editor(initial, id=widget_id, language=field.get("language"), classes="form-modal-textarea")
     elif field_type == "textarea":
-      yield TextArea(initial, id=widget_id)
+      yield TextArea(initial, id=widget_id, classes="form-modal-textarea")
     else:
       yield Input(initial, id=widget_id, placeholder=placeholder)
 

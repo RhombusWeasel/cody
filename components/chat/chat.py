@@ -110,6 +110,55 @@ class MsgBox(Widget):
   def on_mount(self) -> None:
     self.watch_messages(self.messages)
 
+  def run_conversation_from_text(self, text: str) -> None:
+    """Same path as MessageInput submit: user message + placeholder + agent worker (no slash commands)."""
+    text = (text or "").strip()
+    if not text:
+      return
+    from utils.cfg_man import cfg
+    from utils.git import create_checkpoint
+
+    app_dir = cfg.get("session.working_directory")
+    user_text = text
+    try:
+      inp = self.query_one(MessageInput)
+    except Exception:
+      inp = None
+    if inp is not None and user_text not in inp.input_history:
+      db_path = db_manager.get_project_db_path()
+      query = "INSERT INTO input_history (user_input) VALUES (?)"
+      self.app.run_worker(db_manager.execute(db_path, query, (user_text,)))
+      inp.input_history.append(user_text)
+      inp.history_index = len(inp.input_history)
+      inp.current_input = ""
+    display_content = user_text
+    agent_content = user_text
+    raw_query = display_content.split("\n\n`")[0].strip() if "\n\n`" in display_content else display_content
+    if not any(m.get("role") == "user" for m in self.messages):
+      self.chat_title = raw_query[:30] + "..." if len(raw_query) > 30 else raw_query
+    checkpoint_msg = (
+      f"Cody checkpoint: {agent_content[:50]}..."
+      if len(agent_content) > 50
+      else f"Cody checkpoint: {agent_content}"
+    )
+    git_checkpoint = create_checkpoint(app_dir, checkpoint_msg)
+    user_msg = {"role": "user", "content": display_content}
+    if git_checkpoint:
+      user_msg["git_checkpoint"] = git_checkpoint
+    msgs = [*self.messages, user_msg]
+    placeholder_id = f"pending_{len(msgs)}"
+    msgs.append({
+      "id": placeholder_id,
+      "role": "assistant",
+      "content": "Thinking…",
+      "loading": True,
+    })
+    self.messages = msgs
+    self.app.run_worker(
+      self.get_agent_response(agent_content, placeholder_id, git_checkpoint),
+      exclusive=False,
+    )
+
   async def get_agent_response(self, user_text: str, placeholder_id: str, git_checkpoint: str | None = None) -> None:
     from utils.tool import execute_tool
 
@@ -148,6 +197,8 @@ class MsgBox(Widget):
             result = await asyncio.to_thread(execute_tool, tc.function.name, args)
         else:
           result = await asyncio.to_thread(execute_tool, tc.function.name, args)
+        if tc.function.name == "run_skill" and args.get("skill_name") == "todo":
+          self._refresh_todo_trees()
         if not isinstance(result, str):
           result = json.dumps(result)
         tool_data = json.dumps({
@@ -172,6 +223,13 @@ class MsgBox(Widget):
       from components.sidebar.chat_history import ChatHistoryTab
       chat_history = self.app.query_one(ChatHistoryTab)
       chat_history.load_chats()
+    except Exception:
+      pass
+
+  def _refresh_todo_trees(self) -> None:
+    try:
+      for tree in self.app.query("TodoTree"):
+        tree.load_todos()
     except Exception:
       pass
 

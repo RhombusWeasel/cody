@@ -12,7 +12,7 @@ from textual.containers import Horizontal, Vertical
 import utils.fs as fs
 from utils.cfg_man import cfg
 from utils.db import db_manager
-from components.sidebar.chat_history import ChatHistoryTab
+from components.sidebar.chat_history import ChatHistoryTab, OpenChatWithSeedMessage
 
 from utils.theme_man import discover_themes
 
@@ -112,6 +112,18 @@ class TuiApp(WorkspaceAppKeybindsMixin, AppShellKeybindsMixin, App):
                 return
         chat_data = await db_manager.get_chat(event.chat_id)
         await workspace.add_tab(ChatTab(cfg, chat_id=event.chat_id, chat_data=chat_data, title=event.title))
+
+  @on(OpenChatWithSeedMessage)
+  async def handle_open_chat_with_seed(self, event: OpenChatWithSeedMessage) -> None:
+    workspace = self.query_one(Workspace)
+    tab = ChatTab(cfg)
+    await workspace.add_tab(tab)
+
+    def run_seed() -> None:
+      msg_box = tab.query_one(MsgBox)
+      msg_box.run_conversation_from_text(event.user_message)
+
+    tab.call_later(run_seed)
 
 
 async def main():

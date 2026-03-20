@@ -9,6 +9,14 @@ from utils.icons import DELETE
 from utils.db import db_manager
 
 
+class OpenChatWithSeedMessage(Message, bubble=True):
+    """Open a new chat tab and send this text as the first user message (agent run)."""
+
+    def __init__(self, user_message: str):
+        self.user_message = user_message
+        super().__init__()
+
+
 class ChatItem(Horizontal):
     class Selected(Message):
         def __init__(self, chat_id: str, title: str):
