@@ -12,12 +12,13 @@ class DatabaseManager:
         self._init_project_db()
 
     def get_project_db_path(self):
-        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        agents_dir = os.path.join(root_dir, ".agents")
+        from utils.paths import get_cody_dir
+        agents_dir = os.path.join(get_cody_dir(), ".agents")
         return os.path.join(agents_dir, "cody_data.db")
 
     def _init_project_db(self):
-        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        from utils.paths import get_cody_dir
+        root_dir = get_cody_dir()
         agents_dir = os.path.join(root_dir, ".agents")
         os.makedirs(agents_dir, exist_ok=True)
 
@@ -79,7 +80,8 @@ class DatabaseManager:
             saved_connections = []
             needs_save = True
             
-        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        from utils.paths import get_cody_dir
+        root_dir = get_cody_dir()
         old_db_path = os.path.join(root_dir, ".cody", "data.db")
         new_db_path = self.get_project_db_path()
 

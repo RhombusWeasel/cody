@@ -60,17 +60,13 @@ def main():
   args = parser.parse_args()
 
   working_dir = args.working_directory or os.getcwd()
+  cfg.load_project_config(working_dir)
   cfg.set('session.working_directory', working_dir)
 
-  fs.load_folder(os.path.join(project_root, 'tools'), '.py')
-
-  global_tools = os.path.join(os.path.expanduser('~'), '.agents', 'tools')
-  if os.path.exists(global_tools):
-    fs.load_folder(global_tools, '.py')
-
-  local_tools = os.path.join(working_dir, '.agents', 'tools')
-  if os.path.exists(local_tools):
-    fs.load_folder(local_tools, '.py')
+  from utils.paths import get_tiered_paths
+  for tool_path in get_tiered_paths('tools', working_dir):
+    if os.path.exists(tool_path):
+      fs.load_folder(tool_path, '.py')
 
   agent = _load_agent(args.name)
   if not agent:

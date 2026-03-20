@@ -28,6 +28,7 @@ if args.working_directory == '.':
 else:
   args.working_directory = args.working_directory
 
+cfg.load_project_config(args.working_directory)
 cfg.set('session.working_directory', args.working_directory)
 
 from utils.git import ensure_git_repo
@@ -49,15 +50,10 @@ for _skill in skill_manager.skills.values():
   if os.path.isdir(_skill_css_dir):
     _css_paths.extend(fs.discover_css(_skill_css_dir))
 
-fs.load_folder('tools', '.py')
-
-global_tools_path = os.path.join(os.path.expanduser('~'), '.agents', 'tools')
-if os.path.exists(global_tools_path):
-  fs.load_folder(global_tools_path, '.py')
-
-local_tools_path = os.path.join(args.working_directory, '.agents', 'tools')
-if os.path.exists(local_tools_path):
-  fs.load_folder(local_tools_path, '.py')
+from utils.paths import get_tiered_paths
+for tool_path in get_tiered_paths('tools', args.working_directory):
+  if os.path.exists(tool_path):
+    fs.load_folder(tool_path, '.py')
 
 visibility = {
   'util-sidebar': cfg.get('interface.sidebar_open_on_start'),

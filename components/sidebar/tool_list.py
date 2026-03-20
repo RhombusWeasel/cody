@@ -165,7 +165,8 @@ class ToolList(Container):
       if not name or not name.strip():
         return
       name = name.strip()
-      project_dir = Path(os.getcwd())
+      from utils.cfg_man import cfg
+      project_dir = Path(cfg.get('session.working_directory', os.getcwd()))
       skill_dir = project_dir / ".agents" / "skills" / name
       skill_dir.mkdir(parents=True, exist_ok=True)
       skill_file = skill_dir / "SKILL.md"

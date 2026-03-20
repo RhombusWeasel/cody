@@ -50,7 +50,7 @@ class MessageInput(TextArea):
     self.app.run_worker(self._load_history())
     self.app.run_worker(self._load_files())
     app_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    self.commands = load_commands(app_dir)
+    self.commands = load_commands()
 
   async def _load_files(self):
     from utils.cfg_man import cfg

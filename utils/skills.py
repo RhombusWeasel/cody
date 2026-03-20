@@ -46,12 +46,11 @@ class SkillManager:
         Later directories in the list override skills from earlier directories.
         """
         self.skills = {}
-        cody_app_dir = Path(__file__).parent.parent
         working_dir = cfg.get('session.working_directory', os.getcwd())
         
         default_dirs = [
-            "~/.agents/skills",
             "$CODY_DIR/skills",
+            "~/.agents/skills",
             "{working_directory}/.agents/skills"
         ]
         
@@ -65,14 +64,8 @@ class SkillManager:
         if not isinstance(directories, list):
             directories = default_dirs
             
-        search_paths = []
-        for d in directories:
-            # Replace placeholders
-            d = d.replace('$CODY_DIR', str(cody_app_dir))
-            d = d.replace('{working_directory}', str(working_dir))
-            # Expand ~ to user home
-            d = os.path.expanduser(d)
-            search_paths.append(Path(d))
+        from utils.paths import resolve_dir_templates
+        search_paths = [Path(d) for d in resolve_dir_templates(directories, working_dir)]
         
         for base_path in search_paths:
             if not base_path.exists() or not base_path.is_dir():
