@@ -34,8 +34,11 @@ class Pane(Widget):
                 # If no tabs left, we might want to close the pane if it's not the only one
                 await self.workspace.check_empty_pane(self)
 
-    def on_click(self, event: Click):
+    def on_click(self, event: Click) -> None:
         self.workspace.set_active_pane(self)
+        target = event.control
+        if target is not None and self in target.ancestors:
+            return
         self.focus()
 
     def on_focus(self) -> None:
@@ -88,6 +91,26 @@ class Workspace(Widget):
             remaining = list(self.query(Pane))
             if remaining:
                 self.set_active_pane(remaining[0])
+
+    async def close_active_pane(self):
+        """Remove the active pane when there is more than one (splits)."""
+        if not self.active_pane:
+            return
+        panes = list(self.query(Pane))
+        if len(panes) <= 1:
+            return
+        current = self.active_pane
+        try:
+            idx = panes.index(current)
+        except ValueError:
+            return
+        if idx < len(panes) - 1:
+            target = panes[idx + 1]
+        else:
+            target = panes[idx - 1]
+        await current.remove()
+        self.set_active_pane(target)
+        target.focus()
 
     async def split_vertical(self):
         """Split the active pane vertically (side-by-side, so a Horizontal container)."""

@@ -68,6 +68,7 @@ class TuiApp(App):
     ('ctrl+d', 'toggle_visible("util-sidebar")', 'Toggle Sidebar'),
     ('ctrl+t', 'toggle_visible("term-sidebar")', 'Toggle Terminal'),
     Binding('ctrl+w', 'close_active_tab', 'Close Tab', priority=True),
+    Binding('ctrl+shift+p', 'close_active_pane', 'Close Pane', priority=True),
     Binding('ctrl+n', 'new_chat_tab', 'New Chat Tab', priority=True),
     Binding('ctrl+v', 'split_vertical', 'Split Vertical', priority=True),
     Binding('ctrl+h', 'split_horizontal', 'Split Horizontal', priority=True),
@@ -149,6 +150,10 @@ class TuiApp(App):
   async def action_close_active_tab(self):
     workspace = self.query_one(Workspace)
     await workspace.close_active_tab()
+
+  async def action_close_active_pane(self):
+    workspace = self.query_one(Workspace)
+    await workspace.close_active_pane()
 
   async def action_new_chat_tab(self):
     workspace = self.query_one(Workspace)
