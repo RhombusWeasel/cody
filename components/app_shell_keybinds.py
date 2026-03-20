@@ -15,7 +15,7 @@ from utils.layout_visibility import toggle_sidebar_on_app
 
 class AppShellKeybindsMixin:
   BINDINGS = [
-    ('ctrl+d', 'toggle_visible("util-sidebar")', 'Toggle Sidebar'),
+    ('ctrl+grave_accent', 'toggle_visible("util-sidebar")', 'Toggle Sidebar'),
     ('ctrl+t', 'toggle_visible("term-sidebar")', 'Toggle Terminal'),
   ]
 

@@ -76,7 +76,7 @@ Check out the `examples/` directory for sample code on how to extend Cody:
 
 | Key | Action |
 |-----|--------|
-| `Ctrl+S` | Toggle sidebar |
+| ``Ctrl+` `` | Toggle sidebar |
 | `Ctrl+T` | Toggle terminal |
 | `Ctrl+N` | New chat tab |
 | `Ctrl+W` | Close chat tab |
