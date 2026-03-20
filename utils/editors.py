@@ -1,8 +1,8 @@
-"""File editing utilities - language mapping and editor modal."""
+"""File editing utilities - language mapping and editor tab."""
+import asyncio
+import threading
 from pathlib import Path
 from typing import Callable
-
-from components.utils.input_modal import InputModal
 
 
 LANG_MAP = {
@@ -19,7 +19,7 @@ def open_file_editor(
   path: Path,
   on_saved: Callable[[], None] | None = None,
 ) -> None:
-  """Open InputModal to edit a file. Handles read/save errors. Calls on_saved after save."""
+  """Open EditorTab to edit a file. Handles read errors."""
   try:
     content = path.read_text(encoding="utf-8")
   except UnicodeDecodeError:
@@ -33,23 +33,32 @@ def open_file_editor(
   language = LANG_MAP.get(ext)
   code_editor = ext in LANG_MAP
 
-  def on_result(new_content: str | None) -> None:
-    if new_content is not None:
-      try:
-        path.write_text(new_content, encoding="utf-8")
-        app.notify(f"Saved {path.name}")
-        if on_saved:
-          on_saved()
-      except Exception as e:
-        app.notify(f"Error saving: {e}", severity="error")
+  from components.workspace.editor_tab import EditorTab
+  from components.workspace.workspace import Workspace
 
-  app.push_screen(
-    InputModal(
-      title=f"Editing {path.name}",
-      initial_value=content,
-      multiline=True,
+  editor_tab = EditorTab(
+      path=path,
+      content=content,
       language=language,
       code_editor=bool(code_editor),
-    ),
-    on_result,
+      on_saved=on_saved
   )
+
+  def schedule_add_tab() -> None:
+    async def add_tab() -> None:
+      workspace = app.query_one(Workspace)
+      await workspace.add_tab(editor_tab)
+
+    asyncio.create_task(add_tab())
+
+  try:
+    app.query_one(Workspace)
+  except Exception as e:
+    app.notify(f"Could not open editor in workspace: {e}", severity="error")
+    return
+
+  # call_from_thread must only be used from a worker thread; on the main thread use call_later.
+  if threading.current_thread() is threading.main_thread():
+    app.call_later(schedule_add_tab)
+  else:
+    app.call_from_thread(schedule_add_tab)

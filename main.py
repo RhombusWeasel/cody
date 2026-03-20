@@ -2,7 +2,9 @@ import os
 import asyncio
 from textual import on
 from textual.app import App
-from components.chat.chat import Chat, MsgBox
+from textual.binding import Binding
+from components.chat.chat import ChatTab, MsgBox
+from components.workspace.workspace import Workspace
 from textual.widgets import Header, Footer, Button, TabbedContent, TabPane
 from components.sidebar.wrapper import Sidebar
 from components.terminal.terminal_sidebar import TerminalSidebar, CustomTerminal
@@ -61,11 +63,16 @@ visibility = {
 }
 
 class TuiApp(App):
+  # priority=True so split/pane keys still fire while MessageInput (TextArea) or editors are focused.
   BINDINGS = [
-    ('ctrl+s', 'toggle_visible("util-sidebar")', 'Toggle Sidebar'),
+    ('ctrl+d', 'toggle_visible("util-sidebar")', 'Toggle Sidebar'),
     ('ctrl+t', 'toggle_visible("term-sidebar")', 'Toggle Terminal'),
-    ('ctrl+w', 'close_chat_tab', 'Close Chat Tab'),
-    ('ctrl+n', 'new_chat_tab', 'New Chat Tab'),
+    Binding('ctrl+w', 'close_active_tab', 'Close Tab', priority=True),
+    Binding('ctrl+n', 'new_chat_tab', 'New Chat Tab', priority=True),
+    Binding('ctrl+v', 'split_vertical', 'Split Vertical', priority=True),
+    Binding('ctrl+h', 'split_horizontal', 'Split Horizontal', priority=True),
+    Binding('ctrl+right', 'focus_next_pane', 'Next Pane', priority=True),
+    Binding('ctrl+left', 'focus_previous_pane', 'Previous Pane', priority=True),
   ]
   CSS_PATH = _css_paths
 
@@ -74,39 +81,47 @@ class TuiApp(App):
     for t in themes.values():
       self.register_theme(t)
     self.theme = cfg.get('interface.theme', 'h4x0я')
+    # Start with an initial chat tab
+    await self.action_new_chat_tab()
 
   def watch_theme(self, theme: str) -> None:
     cfg.set('interface.theme', theme)
 
   async def cleanup(self):
     try:
-      chat_widget = self.query_one(Chat)
-      tabs = chat_widget.query_one("#chat_tabs", TabbedContent)
-      for pane in tabs.query(TabPane):
-        msg_box = pane.query_one(MsgBox)
+      workspace = self.query_one(Workspace)
+      for msg_box in workspace.query(MsgBox):
         await msg_box.save_chat()
     except Exception:
       pass
     cfg.save()
 
   def compose(self):
-    with Vertical():
+    with Vertical(id="app_body"):
       yield Header(show_clock=True)
-      with Horizontal():
+      with Horizontal(id="main_row"):
         side_classes = 'sidebar -visible' if cfg.get('interface.sidebar_open_on_start') else 'sidebar'
         yield Sidebar(id='util-sidebar', classes=side_classes)
-        yield Chat(cfg)
+        yield Workspace(id="workspace")
         yield TerminalSidebar(id='term-sidebar', classes='right-sidebar')
       yield Footer()
 
   @on(ChatHistoryTab.ChatSelected)
   async def handle_chat_selected(self, event: ChatHistoryTab.ChatSelected):
-    chat_widget = self.query_one(Chat)
+    workspace = self.query_one(Workspace)
     if event.chat_id is None:
-        await chat_widget.add_chat_tab()
+        await workspace.add_tab(ChatTab(cfg))
     else:
+        # Check if already open
+        for tab in workspace.query(ChatTab):
+            if tab.chat_id == event.chat_id:
+                # Focus this tab's pane and set it active
+                pane = tab.parent.parent # TabPane -> TabbedContent -> Pane
+                workspace.set_active_pane(pane)
+                pane.tabs.active = tab.id
+                return
         chat_data = await db_manager.get_chat(event.chat_id)
-        await chat_widget.add_chat_tab(event.chat_id, chat_data, event.title)
+        await workspace.add_tab(ChatTab(cfg, chat_id=event.chat_id, chat_data=chat_data, title=event.title))
 
   def action_toggle_visible(self, id):
     visibility[id] = not visibility[id]
@@ -131,13 +146,29 @@ class TuiApp(App):
         self.set_timer(0.05, widget.start_terminal)
         widget.query_one("#terminal_bash").focus()
 
-  async def action_close_chat_tab(self):
-    chat_widget = self.query_one(Chat)
-    await chat_widget.close_current_tab()
+  async def action_close_active_tab(self):
+    workspace = self.query_one(Workspace)
+    await workspace.close_active_tab()
 
   async def action_new_chat_tab(self):
-    chat_widget = self.query_one(Chat)
-    await chat_widget.add_chat_tab()
+    workspace = self.query_one(Workspace)
+    await workspace.add_tab(ChatTab(cfg))
+
+  async def action_split_vertical(self):
+    workspace = self.query_one(Workspace)
+    await workspace.split_vertical()
+
+  async def action_split_horizontal(self):
+    workspace = self.query_one(Workspace)
+    await workspace.split_horizontal()
+
+  def action_focus_next_pane(self):
+    workspace = self.query_one(Workspace)
+    workspace.focus_next_pane()
+
+  def action_focus_previous_pane(self):
+    workspace = self.query_one(Workspace)
+    workspace.focus_previous_pane()
 
   def action_send_terminal_to_chat(self):
     self.trigger_send_terminal()
@@ -162,12 +193,20 @@ class TuiApp(App):
         msg_content += f"```terminal\n{terminal_text}\n```"
 
         try:
-            chat_widget = self.query_one(Chat)
-            tabs = chat_widget.query_one("#chat_tabs", TabbedContent)
-            active_pane = tabs.active
+            workspace = self.query_one(Workspace)
+            active_pane = workspace.active_pane
             if not active_pane:
                 return
-            chat_box = chat_widget.query_one(f"#{active_pane}", TabPane).query_one(MsgBox)
+            active_tab_id = active_pane.tabs.active
+            if not active_tab_id:
+                return
+            
+            active_tab = active_pane.tabs.query_one(f"#{active_tab_id}", TabPane)
+            if not isinstance(active_tab, ChatTab):
+                # Not a chat tab, maybe create one?
+                return
+                
+            chat_box = active_tab.query_one(MsgBox)
             
             msgs = [*chat_box.messages, {"role": "user", "content": msg_content}]
             placeholder_id = f"pending_{len(msgs)}"
