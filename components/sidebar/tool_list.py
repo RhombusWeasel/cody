@@ -94,7 +94,7 @@ class SkillsTree(GenericTree):
 
   def get_node_buttons(self, node_id, is_expandable) -> list[Button]:
     if isinstance(node_id, Path):
-      return file_ops.node_buttons(is_expandable, self._make_btn)
+      return file_ops.node_buttons(is_expandable, lambda action: self.on_button_action(node_id, action))
     return []
 
   def on_button_action(self, node_id, action: str) -> None:
@@ -110,11 +110,12 @@ class ToolList(Container):
     self._last_snapshot = None
 
   def compose(self) -> ComposeResult:
+    from components.utils.buttons import AddButton
     with Vertical():
       yield Label(f"{icons.SKILLS}  Skills", classes="header")
       with VerticalScroll():
         yield SkillsTree(id="skills_tree")
-      yield Button("Add Skill", id="add_skill_btn", variant="primary")
+      yield AddButton(action=self.on_add_skill, label="Add Skill", id="add_skill_btn", variant="primary")
 
   def on_mount(self) -> None:
     self._refresh_tree(force=True)
@@ -159,7 +160,6 @@ class ToolList(Container):
       save_skill,
     )
 
-  @on(Button.Pressed, "#add_skill_btn")
   def on_add_skill(self) -> None:
     def check_name(name: str | None) -> None:
       if not name or not name.strip():

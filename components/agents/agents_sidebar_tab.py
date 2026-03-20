@@ -34,12 +34,13 @@ class AgentsSidebarTab(Vertical):
     self._selected_agent_id: str | None = None
 
   def compose(self) -> ComposeResult:
+    from components.utils.buttons import EditButton, DeleteButton, AddButton
     yield Label(f"{icons.AGENTS} Agents", id="agents_tab_title")
     yield DataTable(id="agents_table", show_cursor=True, zebra_stripes=True)
     with Horizontal(id="agents_actions"):
-      yield Button(f"{icons.EDIT} Edit", id="btn_edit_agent", classes="agent-btn", disabled=True)
-      yield Button(f"{icons.DELETE} Delete", id="btn_delete_agent", classes="agent-btn agent-btn-danger", disabled=True)
-    yield Button(f"+ Add Agent", id="btn_add_agent", variant="primary")
+      yield EditButton(action=self._on_edit, id="btn_edit_agent", label=f"{icons.EDIT} Edit", classes="action-btn agent-btn", disabled=True)
+      yield DeleteButton(action=self._on_delete, id="btn_delete_agent", label=f"{icons.DELETE} Delete", classes="action-btn agent-btn agent-btn-danger", disabled=True)
+    yield AddButton(action=self._on_add, id="btn_add_agent", label=f"+ Add Agent", variant="primary")
 
   def on_mount(self) -> None:
     table = self.query_one("#agents_table", DataTable)
@@ -101,13 +102,11 @@ class AgentsSidebarTab(Vertical):
 
   # --- Add ---
 
-  @on(Button.Pressed, "#btn_add_agent")
   def _on_add(self) -> None:
     self._open_form()
 
   # --- Edit ---
 
-  @on(Button.Pressed, "#btn_edit_agent")
   def _on_edit(self) -> None:
     if not self._selected_agent_id:
       return
@@ -120,7 +119,6 @@ class AgentsSidebarTab(Vertical):
 
   # --- Delete ---
 
-  @on(Button.Pressed, "#btn_delete_agent")
   def _on_delete(self) -> None:
     if not self._selected_agent_id:
       return

@@ -206,6 +206,7 @@ class GitTree(GenericTree):
     return result
 
   def get_node_buttons(self, node_id, is_expandable) -> list:
+    from components.utils.buttons import ActionButton, EditButton, DeleteButton, RunButton
     btns = []
 
     if node_id == ("cat", "staged"):
@@ -213,7 +214,7 @@ class GitTree(GenericTree):
       icon = CLEAR_SELECTION if all_selected else SELECT_ALL
       action = "clear_selection" if all_selected else "select_all_staged"
       tooltip = "Clear selection" if all_selected else "Select all staged"
-      btns.append(self._make_btn(icon, tooltip, action))
+      btns.append(ActionButton(icon, action=lambda n=node_id, a=action: self.on_button_action(n, a), tooltip=tooltip, classes="action-btn"))
       return btns
 
     if node_id == ("cat", "changes"):
@@ -221,7 +222,7 @@ class GitTree(GenericTree):
       icon = CLEAR_SELECTION if all_selected else SELECT_ALL
       action = "clear_selection" if all_selected else "select_all_changes"
       tooltip = "Clear selection" if all_selected else "Select all changes"
-      btns.append(self._make_btn(icon, tooltip, action))
+      btns.append(ActionButton(icon, action=lambda n=node_id, a=action: self.on_button_action(n, a), tooltip=tooltip, classes="action-btn"))
       return btns
 
     if node_id == ("cat", "untracked"):
@@ -229,7 +230,7 @@ class GitTree(GenericTree):
       icon = CLEAR_SELECTION if all_selected else SELECT_ALL
       action = "clear_selection" if all_selected else "select_all_untracked"
       tooltip = "Clear selection" if all_selected else "Select all untracked"
-      btns.append(self._make_btn(icon, tooltip, action))
+      btns.append(ActionButton(icon, action=lambda n=node_id, a=action: self.on_button_action(n, a), tooltip=tooltip, classes="action-btn"))
       return btns
 
     if isinstance(node_id, dict) and node_id.get("type") == "change":
@@ -239,31 +240,31 @@ class GitTree(GenericTree):
       label = CHECKED if path in self._selected_for_action else UNCHECKED
 
       if staged:
-        btns.append(self._make_btn(GIT_UNSTAGE, "Unstage file", "unstage_file"))
+        btns.append(ActionButton(GIT_UNSTAGE, action=lambda n=node_id: self.on_button_action(n, "unstage_file"), tooltip="Unstage file", classes="action-btn"))
       else:
-        btns.append(self._make_btn(GIT_ADD, "Stage file", "stage_file"))
+        btns.append(ActionButton(GIT_ADD, action=lambda n=node_id: self.on_button_action(n, "stage_file"), tooltip="Stage file", classes="action-btn"))
 
-      btns.append(self._make_btn(GIT_DISCARD, "Discard changes", "discard"))
-      btns.append(self._make_btn(GIT_IGNORE, "Add to .gitignore", "add_to_gitignore"))
-      btns.append(self._make_btn(label, "Toggle for commit/stage/unstage", "toggle_select"))
+      btns.append(ActionButton(GIT_DISCARD, action=lambda n=node_id: self.on_button_action(n, "discard"), tooltip="Discard changes", classes="action-btn"))
+      btns.append(ActionButton(GIT_IGNORE, action=lambda n=node_id: self.on_button_action(n, "add_to_gitignore"), tooltip="Add to .gitignore", classes="action-btn"))
+      btns.append(ActionButton(label, action=lambda n=node_id: self.on_button_action(n, "toggle_select"), tooltip="Toggle for commit/stage/unstage", classes="action-btn"))
       return btns
 
     if isinstance(node_id, dict) and node_id.get("type") == "commit":
-      btns.append(self._make_btn(GIT_CHERRY_PICK, "Cherry-pick", "cherry_pick"))
-      btns.append(self._make_btn(GIT_REVERT, "Revert commit", "revert_commit"))
-      btns.append(self._make_btn(GIT_BRANCH, "Create branch", "create_branch"))
+      btns.append(ActionButton(GIT_CHERRY_PICK, action=lambda n=node_id: self.on_button_action(n, "cherry_pick"), tooltip="Cherry-pick", classes="action-btn"))
+      btns.append(ActionButton(GIT_REVERT, action=lambda n=node_id: self.on_button_action(n, "revert_commit"), tooltip="Revert commit", classes="action-btn"))
+      btns.append(ActionButton(GIT_BRANCH, action=lambda n=node_id: self.on_button_action(n, "create_branch"), tooltip="Create branch", classes="action-btn"))
       return btns
 
     if isinstance(node_id, dict) and node_id.get("type") == "branch":
-      btns.append(self._make_btn(RUN, "Switch to branch", "checkout_branch_btn"))
-      btns.append(self._make_btn(GIT_MERGE, "Merge into current", "merge_branch"))
-      btns.append(self._make_btn(EDIT, "Rename branch", "rename_branch"))
-      btns.append(self._make_btn(DELETE, "Delete branch", "delete_branch"))
+      btns.append(RunButton(action=lambda n=node_id: self.on_button_action(n, "checkout_branch_btn"), tooltip="Switch to branch"))
+      btns.append(ActionButton(GIT_MERGE, action=lambda n=node_id: self.on_button_action(n, "merge_branch"), tooltip="Merge into current", classes="action-btn"))
+      btns.append(EditButton(action=lambda n=node_id: self.on_button_action(n, "rename_branch"), tooltip="Rename branch"))
+      btns.append(DeleteButton(action=lambda n=node_id: self.on_button_action(n, "delete_branch"), tooltip="Delete branch"))
       return btns
 
     if isinstance(node_id, dict) and node_id.get("type") == "stash":
-      btns.append(self._make_btn(RUN, "Pop stash", "pop_stash"))
-      btns.append(self._make_btn(DELETE, "Drop stash", "drop_stash"))
+      btns.append(RunButton(action=lambda n=node_id: self.on_button_action(n, "pop_stash"), tooltip="Pop stash"))
+      btns.append(DeleteButton(action=lambda n=node_id: self.on_button_action(n, "drop_stash"), tooltip="Drop stash"))
       return btns
 
     return []

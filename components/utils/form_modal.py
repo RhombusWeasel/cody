@@ -36,8 +36,9 @@ class FormModal(ModalScreen):
       with VerticalScroll(id="form_modal_body"):
         yield from self._compose_fields(self._schema)
       with Horizontal(classes="modal-button-container"):
-        yield Button("Save", id="btn_form_save", variant="primary", classes="modal-button")
-        yield Button("Cancel", id="btn_form_cancel", variant="error", classes="modal-button")
+        from components.utils.buttons import ActionButton
+        yield ActionButton("Save", action=self.on_save, id="btn_form_save", variant="primary", classes="action-btn modal-button")
+        yield ActionButton("Cancel", action=self.on_cancel, id="btn_form_cancel", variant="error", classes="action-btn modal-button")
 
   def _compose_fields(self, fields: list[dict]) -> ComposeResult:
     for field in fields:
@@ -90,8 +91,7 @@ class FormModal(ModalScreen):
       return self.query_one(f"#{widget_id}", TextArea).text
     return self.query_one(f"#{widget_id}", Input).value
 
-  @on(Button.Pressed, "#btn_form_save")
-  def _on_save(self) -> None:
+  def on_save(self) -> None:
     required_fields = [
       f for f in self._schema
       if f.get("type") != "row" and f.get("required")
@@ -108,6 +108,5 @@ class FormModal(ModalScreen):
       self._callback(merged)
     self.dismiss(None)
 
-  @on(Button.Pressed, "#btn_form_cancel")
-  def _on_cancel(self) -> None:
+  def on_cancel(self) -> None:
     self.dismiss(None)

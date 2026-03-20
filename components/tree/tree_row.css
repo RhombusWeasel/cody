@@ -14,9 +14,9 @@ TreeRow {
     width: 1fr;
   }
 
-  TreeRow .tree-node-btn {
+  TreeRow .action-btn {
     min-width: 3;
-    height: 2;
+    height: 1;
     padding: 0 0;
     color: $primary-lighten-2;
     align: right middle;

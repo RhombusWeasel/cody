@@ -18,6 +18,7 @@ class DiffModal(ModalScreen):
     self.file_path = file_path
 
   def compose(self) -> ComposeResult:
+    from components.utils.buttons import ActionButton
     syntax = Syntax(
       self.content,
       lexer="diff",
@@ -29,8 +30,7 @@ class DiffModal(ModalScreen):
       yield Label(self.title_text, id="diff_modal_header", markup=False)
       with VerticalScroll(id="diff_modal_content"):
         yield Static(syntax)
-      yield Button("Close", id="btn_diff_close", variant="primary")
+      yield ActionButton("Close", action=self.on_close, id="btn_diff_close", variant="primary", classes="action-btn")
 
-  @on(Button.Pressed, "#btn_diff_close")
   def on_close(self) -> None:
     self.dismiss()

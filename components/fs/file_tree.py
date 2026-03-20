@@ -36,7 +36,7 @@ class FileTree(GenericTree):
     return result
 
   def get_node_buttons(self, node_id: Path, is_expandable: bool) -> list[Button]:
-    return file_ops.node_buttons(is_expandable, self._make_btn)
+    return file_ops.node_buttons(is_expandable, lambda action: self.on_button_action(node_id, action))
 
   def on_button_action(self, node_id: Path, action: str) -> None:
     file_ops.handle_action(self.app, node_id, action, self._refresh)

@@ -23,11 +23,9 @@ ResultsModal {
   }
 
   .icon-btn {
-    min-width: 5;
-    width: 5;
-    height: 3;
-    border: round $primary;
-    background: $surface;
+    min-width: 3;
+    width: auto;
+    height: 1;
   }
 
   #results_modal_table {

@@ -30,7 +30,6 @@ DiffModal {
   }
 
   #btn_diff_close {
-    height: 1;
     width: 50%;
     align: center middle;
   }

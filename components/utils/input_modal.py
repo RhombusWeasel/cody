@@ -26,11 +26,12 @@ class InputModal(ModalScreen):
         else:
           yield Input(self.initial_value, id="input_modal_input")
       with Horizontal(classes="modal-button-container"):
+        from components.utils.buttons import ActionButton
         if self.confirm_only:
-          yield Button("Confirm", id="btn_input_modal_save", variant="primary", classes="modal-button")
+          yield ActionButton("Confirm", action=self.on_save, id="btn_input_modal_save", variant="primary", classes="action-btn modal-button")
         else:
-          yield Button("Save", id="btn_input_modal_save", variant="primary", classes="modal-button")
-        yield Button("Cancel", id="btn_input_modal_cancel", variant="error", classes="modal-button")
+          yield ActionButton("Save", action=self.on_save, id="btn_input_modal_save", variant="primary", classes="action-btn modal-button")
+        yield ActionButton("Cancel", action=self.on_cancel, id="btn_input_modal_cancel", variant="error", classes="action-btn modal-button")
 
   def on_mount(self) -> None:
     if self.confirm_only:
@@ -52,7 +53,6 @@ class InputModal(ModalScreen):
       except ImportError:
         pass
 
-  @on(Button.Pressed, "#btn_input_modal_save")
   def on_save(self) -> None:
     if self.confirm_only:
       self.dismiss(True)
@@ -63,6 +63,5 @@ class InputModal(ModalScreen):
       val = self.query_one("#input_modal_input", Input).value
       self.dismiss(val)
 
-  @on(Button.Pressed, "#btn_input_modal_cancel")
   def on_cancel(self) -> None:
     self.dismiss(None)

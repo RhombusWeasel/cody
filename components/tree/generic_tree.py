@@ -32,7 +32,7 @@ class GenericTree(Vertical):
     return self._icon_set.get(key, FILE)
 
   def compose(self) -> ComposeResult:
-    self._rows_container = Vertical(id="tree_rows")
+    self._rows_container = Vertical(classes="tree_rows")
     yield self._rows_container
 
   def on_mount(self) -> None:
@@ -72,12 +72,6 @@ class GenericTree(Vertical):
     """Reload tree from data. Call after external data changes."""
     self._refresh()
 
-  def _make_btn(self, label: str, tooltip: str, action: str, btn_class: str = "tree-node-btn") -> Button:
-    btn = Button(label, classes=btn_class)
-    btn.tooltip = tooltip
-    setattr(btn, "node_action", action)
-    return btn
-
   def _refresh(self) -> None:
     if not self._rows_container:
       return
@@ -111,11 +105,3 @@ class GenericTree(Vertical):
   @on(NodeSelected)
   def _on_node_selected(self, event: NodeSelected) -> None:
     self.on_node_selected(event.node_id)
-
-  @on(Button.Pressed)
-  def _on_button_pressed(self, event: Button.Pressed) -> None:
-    btn = event.control
-    node_id = getattr(btn, "node_id", None)
-    action = getattr(btn, "node_action", None)
-    if node_id is not None and action is not None:
-      self.on_button_action(node_id, action)

@@ -163,13 +163,14 @@ class SettingsTree(GenericTree):
         return parts[-1].isdigit() and '.'.join(parts[:-1]) == "db.connections"
 
     def get_node_buttons(self, node_id: str, is_expandable: bool) -> list:
+        from components.utils.buttons import EditButton, DeleteButton, AddButton
         if node_id == self._section_key:
             return []
 
         if self._is_conn_item(node_id):
             return [
-                self._make_btn(icons.EDIT, "Edit connection", "edit_conn", btn_class="settings-edit-btn"),
-                self._make_btn(icons.DELETE, "Delete connection", "delete", btn_class="settings-del-btn"),
+                EditButton(action=lambda n=node_id: self.on_button_action(n, "edit_conn"), tooltip="Edit connection", classes="action-btn settings-edit-btn"),
+                DeleteButton(action=lambda n=node_id: self.on_button_action(n, "delete"), tooltip="Delete connection", classes="action-btn settings-del-btn"),
             ]
 
         val = cfg.get(node_id)
@@ -178,11 +179,11 @@ class SettingsTree(GenericTree):
 
         if isinstance(val, dict):
             if is_list_item:
-                return [self._make_btn(icons.DELETE, "Delete item", "delete", btn_class="settings-del-btn")]
+                return [DeleteButton(action=lambda n=node_id: self.on_button_action(n, "delete"), tooltip="Delete item", classes="action-btn settings-del-btn")]
             return []
 
         if isinstance(val, list):
-            return [self._make_btn("+", "Add item", "add", btn_class="settings-add-btn")]
+            return [AddButton(action=lambda n=node_id: self.on_button_action(n, "add"), tooltip="Add item", classes="action-btn settings-add-btn")]
 
         if is_list_item:
             return [
@@ -191,14 +192,14 @@ class SettingsTree(GenericTree):
                     password=_is_password_field(node_id),
                     classes="settings-input",
                 ),
-                self._make_btn(icons.DELETE, "Delete", "delete", btn_class="settings-del-btn"),
+                DeleteButton(action=lambda n=node_id: self.on_button_action(n, "delete"), tooltip="Delete", classes="action-btn settings-del-btn"),
             ]
 
         if isinstance(val, bool):
             return [Switch(value=val, classes="settings-switch")]
 
         if isinstance(val, str) and '\n' in val:
-            return [self._make_btn(icons.EDIT, "Edit", "edit", btn_class="settings-edit-btn")]
+            return [EditButton(action=lambda n=node_id: self.on_button_action(n, "edit"), tooltip="Edit", classes="action-btn settings-edit-btn")]
 
         return [Input(
             value=str(val) if val is not None else "",

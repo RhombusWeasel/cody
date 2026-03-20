@@ -30,27 +30,22 @@ class GitSidebarTab(Vertical):
     self.selected_for_action: set[str] = set()
 
   def compose(self) -> ComposeResult:
+    from components.utils.buttons import ActionButton, RefreshButton, RunButton
     yield Label(f"{GIT} Manager", id="git_tab_title")
     with Grid(id="git_buttons"):
-      yield Button(REFRESH, id="btn_git_refresh", classes="git-icon-btn")
-      yield Button(GIT_COMMIT, id="btn_git_commit", classes="git-icon-btn")
-      yield Button(GIT_ADD, id="btn_git_stage", classes="git-icon-btn")
-      yield Button(GIT_UNSTAGE, id="btn_git_unstage", classes="git-icon-btn")
-      yield Button(RUN, id="btn_git_checkout", classes="git-icon-btn")
-      yield Button(GIT_STASH, id="btn_git_stash", classes="git-icon-btn")
-      yield Button(GIT_POP_STASH, id="btn_git_pop_stash", classes="git-icon-btn")
+      yield RefreshButton(action=self.on_refresh, id="btn_git_refresh", tooltip="Refresh", classes="action-btn git-icon-btn")
+      yield ActionButton(GIT_COMMIT, action=self.on_commit, id="btn_git_commit", tooltip="AI commit staged", classes="action-btn git-icon-btn")
+      yield ActionButton(GIT_ADD, action=self.on_stage, id="btn_git_stage", tooltip="Stage selected / all", classes="action-btn git-icon-btn")
+      yield ActionButton(GIT_UNSTAGE, action=self.on_unstage, id="btn_git_unstage", tooltip="Unstage selected", classes="action-btn git-icon-btn")
+      yield RunButton(action=self.on_checkout, id="btn_git_checkout", tooltip="Checkout selected branch", classes="action-btn git-icon-btn")
+      yield ActionButton(GIT_STASH, action=self.on_stash, id="btn_git_stash", tooltip="Stash all changes", classes="action-btn git-icon-btn")
+      yield ActionButton(GIT_POP_STASH, action=self.on_pop_stash, id="btn_git_pop_stash", tooltip="Pop latest stash", classes="action-btn git-icon-btn")
     with VerticalScroll(id="git_tree_container"):
       yield Label("Select an item", id="git_selected_label", markup=False)
       yield GitTree(id="git_tree", selected_for_action=self.selected_for_action)
 
   def on_mount(self) -> None:
-    self.query_one("#btn_git_refresh").tooltip = "Refresh"
-    self.query_one("#btn_git_commit").tooltip = "AI commit staged"
-    self.query_one("#btn_git_stage").tooltip = "Stage selected / all"
-    self.query_one("#btn_git_unstage").tooltip = "Unstage selected"
-    self.query_one("#btn_git_checkout").tooltip = "Checkout selected branch"
-    self.query_one("#btn_git_stash").tooltip = "Stash all changes"
-    self.query_one("#btn_git_pop_stash").tooltip = "Pop latest stash"
+    pass
 
   def _refresh_tree(self) -> None:
     tree = self.query_one("#git_tree", GitTree)
@@ -87,11 +82,9 @@ class GitSidebarTab(Vertical):
   def _show_diff(self, title: str, content: str, file_path: str | None = None) -> None:
     self.app.push_screen(DiffModal(title, content, file_path=file_path))
 
-  @on(Button.Pressed, "#btn_git_refresh")
   def on_refresh(self) -> None:
     self._refresh_tree()
 
-  @on(Button.Pressed, "#btn_git_commit")
   def on_commit(self) -> None:
     wd = _get_working_dir()
     try:
@@ -134,7 +127,6 @@ class GitSidebarTab(Vertical):
 
     self.app.push_screen(InputModal("Commit message", initial_value=initial, multiline=True), do_commit)
 
-  @on(Button.Pressed, "#btn_git_stage")
   def on_stage(self) -> None:
     wd = _get_working_dir()
     try:
@@ -169,7 +161,6 @@ class GitSidebarTab(Vertical):
       except Exception:
         self.app.notify("Stage failed", severity="error")
 
-  @on(Button.Pressed, "#btn_git_unstage")
   def on_unstage(self) -> None:
     wd = _get_working_dir()
     try:
@@ -199,7 +190,6 @@ class GitSidebarTab(Vertical):
     else:
       self.app.notify("Select a staged file to unstage", severity="warning")
 
-  @on(Button.Pressed, "#btn_git_checkout")
   def on_checkout(self) -> None:
     data = self.selected_node_data
     wd = _get_working_dir()
@@ -223,7 +213,6 @@ class GitSidebarTab(Vertical):
     else:
       self.app.notify("Select a branch to checkout", severity="warning")
 
-  @on(Button.Pressed, "#btn_git_stash")
   def on_stash(self) -> None:
     wd = _get_working_dir()
     try:
@@ -237,7 +226,6 @@ class GitSidebarTab(Vertical):
     else:
       self.app.notify("Nothing to stash", severity="warning")
 
-  @on(Button.Pressed, "#btn_git_pop_stash")
   def on_pop_stash(self) -> None:
     wd = _get_working_dir()
     try:

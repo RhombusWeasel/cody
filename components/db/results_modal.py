@@ -20,13 +20,14 @@ class ResultsModal(ModalScreen):
     self.working_directory = working_directory
 
   def compose(self) -> ComposeResult:
+    from components.utils.buttons import ActionButton
     with Vertical(id="results_modal_container"):
       with Horizontal(id="results_modal_header"):
         yield Label(self.title_text)
-        yield Button(EXPORT_CSV, id="btn_results_export_csv", classes="icon-btn")
+        yield ActionButton(EXPORT_CSV, action=self.on_export_csv, id="btn_results_export_csv", tooltip="Export to CSV", classes="action-btn icon-btn")
       yield DataTable(id="results_modal_table")
       with Horizontal(classes="modal-button-container"):
-        yield Button("Close", id="btn_results_modal_close", variant="primary", classes="modal-button")
+        yield ActionButton("Close", action=self.on_close, id="btn_results_modal_close", variant="primary", classes="action-btn modal-button")
 
   def on_mount(self) -> None:
     table = self.query_one("#results_modal_table", DataTable)
@@ -51,7 +52,6 @@ class ResultsModal(ModalScreen):
     except Exception as e:
       self.app.notify(f"Export failed: {e}", severity="error")
 
-  @on(Button.Pressed, "#btn_results_export_csv")
   def on_export_csv(self) -> None:
     if not self.columns and not self.rows:
       self.app.notify("No results to export.", severity="warning")
@@ -63,6 +63,5 @@ class ResultsModal(ModalScreen):
 
     self.app.push_screen(InputModal("Export filename"), check_modal_result)
 
-  @on(Button.Pressed, "#btn_results_modal_close")
   def on_close(self) -> None:
     self.dismiss()

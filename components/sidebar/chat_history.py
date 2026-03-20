@@ -28,17 +28,13 @@ class ChatItem(Horizontal):
         self.updated = updated
 
     def compose(self) -> ComposeResult:
+        from components.utils.buttons import DeleteButton
         yield Label(self.chat_title, classes="chat-item-title")
         yield Label(self.updated, classes="chat-item-updated")
-        yield Button(DELETE, classes="chat-item-delete", variant="error")
+        yield DeleteButton(action=lambda: self.post_message(self.Delete(self.chat_id)), classes="action-btn")
 
     async def on_click(self, event: Click) -> None:
         self.post_message(self.Selected(self.chat_id, self.chat_title))
-
-    @on(Button.Pressed, ".chat-item-delete")
-    def on_delete_pressed(self, event: Button.Pressed) -> None:
-        event.stop()
-        self.post_message(self.Delete(self.chat_id))
 
 
 class ChatHistoryTab(VerticalScroll):
@@ -49,8 +45,9 @@ class ChatHistoryTab(VerticalScroll):
             super().__init__()
 
     def compose(self) -> ComposeResult:
+        from components.utils.buttons import AddButton
         with Vertical():
-            yield Button("New Chat", id="btn_new_chat", variant="primary")
+            yield AddButton(action=self.on_new_chat, label="New Chat", id="btn_new_chat")
             yield Vertical(id="chat_list_container")
 
     def on_mount(self) -> None:
@@ -68,8 +65,7 @@ class ChatHistoryTab(VerticalScroll):
             chat_id = str(chat["id"])
             await container.mount(ChatItem(chat_id, title, updated))
 
-    @on(Button.Pressed, "#btn_new_chat")
-    def on_new_chat(self, event: Button.Pressed) -> None:
+    def on_new_chat(self) -> None:
         self.post_message(self.ChatSelected(None))
 
     @on(ChatItem.Selected)

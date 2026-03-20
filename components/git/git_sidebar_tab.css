@@ -29,11 +29,6 @@ GitSidebarTab {
   padding: 0;
   min-width: 0;
   content-align: center middle;
-  color: $primary-lighten-2;
-}
-
-.git-icon-btn:hover {
-  background: $surface-lighten-2;
 }
 
 #git_tree_container {
@@ -54,10 +49,6 @@ GitTree TreeRow .tree-label {
   width: 1fr;
 }
 /* Target the action icon buttons specifically in the Git tree */
-GitTree TreeRow .tree-node-btn {
+GitTree TreeRow .action-btn {
   padding: 0 0 0 0;
-}
-/* You can also target button hover states */
-GitTree TreeRow .tree-node-btn:hover {
-  background: $surface-lighten-3;
 }

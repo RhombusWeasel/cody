@@ -8,24 +8,25 @@ from utils import fs_tree
 from utils.icons import DELETE, EDIT, NEW_FILE, NEW_FOLDER
 from utils.editors import open_file_editor
 from components.utils.input_modal import InputModal
+from components.utils.buttons import ActionButton, EditButton, DeleteButton
 
 
-def node_buttons(is_expandable: bool, make_btn: Callable) -> list[Button]:
+def node_buttons(is_expandable: bool, action_handler: Callable[[str], None]) -> list[Button]:
   """Return action buttons for a tree node.
 
   Args:
     is_expandable: True for folders, False for files.
-    make_btn: The tree's _make_btn(label, tooltip, action) factory.
+    action_handler: Callback taking an action string.
   """
   if is_expandable:
     return [
-      make_btn(NEW_FILE, "New file", "new_file"),
-      make_btn(NEW_FOLDER, "New folder", "new_dir"),
-      make_btn(DELETE, "Delete", "delete"),
+      ActionButton(NEW_FILE, tooltip="New file", action=lambda: action_handler("new_file"), classes="action-btn"),
+      ActionButton(NEW_FOLDER, tooltip="New folder", action=lambda: action_handler("new_dir"), classes="action-btn"),
+      DeleteButton(action=lambda: action_handler("delete")),
     ]
   return [
-    make_btn(EDIT, "Edit", "edit"),
-    make_btn(DELETE, "Delete", "delete"),
+    EditButton(action=lambda: action_handler("edit")),
+    DeleteButton(action=lambda: action_handler("delete")),
   ]
 
 

@@ -210,7 +210,7 @@ class Chat(Widget):
             if chat_data:
                 for msg in chat_data:
                     if msg['role'] == 'user':
-                        title = msg['content'][:15] + "..." if len(msg['content']) > 15 else msg['content']
+                        title = msg['content'][:30] + "..." if len(msg['content']) > 30 else msg['content']
                         break
 
         msg_box = MsgBox(actor, self.config, chat_id=new_chat_id)

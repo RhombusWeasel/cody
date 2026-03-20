@@ -14,7 +14,7 @@
 
 .chat-item {
     width: 100%;
-    height: auto;
+    height: 1;
 }
 
 .chat-item-title {
@@ -23,15 +23,17 @@
 }
 
 .chat-item-updated {
-    width: 1fr;
+    width: auto;
     text-align: right;
     padding: 0 1 0 0;
 }
 
 .chat-item-delete {
-    width: 3;
-    max-width: 3;
-    height: 1;
-    padding: 0;
-    border: none;
+    width: auto;
+    color: $primary;
+}
+
+.chat-item-delete:hover {
+    background: $primary;
+    color: $text;
 }

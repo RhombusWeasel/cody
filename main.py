@@ -142,8 +142,7 @@ class TuiApp(App):
   def action_send_terminal_to_chat(self):
     self.trigger_send_terminal()
 
-  @on(Button.Pressed, "#btn_send_terminal_chat")
-  def on_send_terminal_chat(self, event: Button.Pressed):
+  def on_send_terminal_chat(self, event=None):
     self.trigger_send_terminal()
 
   def trigger_send_terminal(self):

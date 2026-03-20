@@ -29,33 +29,30 @@ class DBSidebarTab(Vertical):
     label.update(f"Selected: {os.path.basename(path)}")
 
   def compose(self) -> ComposeResult:
+    from components.utils.buttons import ActionButton, RunButton, AddButton
     with VerticalScroll(id="db_tree_container"):
-      yield Button("Add Connection", id="btn_add_db_conn", variant="primary")
+      yield AddButton(action=self.on_add_connection, label="Add Connection", id="btn_add_db_conn", variant="primary")
       yield DBTree(id="db_tree", on_select=self._on_db_select)
 
     with Vertical(id="db_query_pane"):
       yield Label("No database selected", id="db_selected_label")
       with Horizontal(id="db_query_input_container"):
         yield Input(placeholder="Enter SQL query...", id="db_query_input")
-        yield Button(OPEN_EXTERNAL, id="btn_popout_query", classes="icon-btn")
-        yield Button(RUN, id="btn_run_query", classes="icon-btn")
+        yield ActionButton(OPEN_EXTERNAL, action=self.on_popout_query, id="btn_popout_query", tooltip="Open Query Editor", classes="action-btn icon-btn")
+        yield RunButton(action=self.on_run_query, id="btn_run_query", tooltip="Run Query", classes="action-btn icon-btn")
       with Horizontal(id="db_results_header"):
         yield Label("Results:")
-        yield Button(OPEN_EXTERNAL, id="btn_popout_results", classes="icon-btn")
-        yield Button(EXPORT_CSV, id="btn_export_csv", classes="icon-btn")
+        yield ActionButton(OPEN_EXTERNAL, action=self.on_popout_results, id="btn_popout_results", tooltip="Open Results Pane", classes="action-btn icon-btn")
+        yield ActionButton(EXPORT_CSV, action=self.on_export_csv, id="btn_export_csv", tooltip="Export to CSV", classes="action-btn icon-btn")
       yield DataTable(id="db_query_results")
 
   def on_mount(self) -> None:
-    self.query_one("#btn_popout_query").tooltip = "Open Query Editor"
-    self.query_one("#btn_run_query").tooltip = "Run Query"
-    self.query_one("#btn_popout_results").tooltip = "Open Results Pane"
-    self.query_one("#btn_export_csv").tooltip = "Export to CSV"
+    pass
 
   def _refresh_tree(self) -> None:
     tree = self.query_one("#db_tree", DBTree)
     tree.reload()
 
-  @on(Button.Pressed, "#btn_add_db_conn")
   def on_add_connection(self) -> None:
     schema = [
       {"key": "label", "label": "Label", "type": "text", "placeholder": "e.g. Production DB"},
@@ -70,7 +67,6 @@ class DBSidebarTab(Vertical):
 
     self.app.push_screen(FormModal("Add Connection", schema=schema, callback=on_save))
 
-  @on(Button.Pressed, "#btn_popout_query")
   def on_popout_query(self) -> None:
     query_input = self.query_one("#db_query_input", Input)
 
@@ -100,7 +96,6 @@ class DBSidebarTab(Vertical):
     except Exception as e:
       self.app.notify(f"Export failed: {e}", severity="error")
 
-  @on(Button.Pressed, "#btn_export_csv")
   def on_export_csv(self) -> None:
     if not self.last_columns and not self.last_rows:
       self.app.notify("No results to export.", severity="warning")
@@ -112,12 +107,10 @@ class DBSidebarTab(Vertical):
 
     self.app.push_screen(InputModal("Export filename"), check_modal_result)
 
-  @on(Button.Pressed, "#btn_popout_results")
   def on_popout_results(self) -> None:
     working_dir = cfg.get("session.working_directory", ".")
     self.app.push_screen(ResultsModal("Query Results", self.last_columns, self.last_rows, working_dir))
 
-  @on(Button.Pressed, "#btn_run_query")
   @on(Input.Submitted, "#db_query_input")
   async def on_run_query(self) -> None:
     if not self.selected_db_path:
