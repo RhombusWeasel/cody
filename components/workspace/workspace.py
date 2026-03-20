@@ -6,6 +6,20 @@ from textual.reactive import reactive
 from textual import on
 from textual.events import Click
 
+
+def _reparent_preserving_children(child: Widget, new_parent: Widget) -> None:
+    """Move child to new_parent without Widget.remove() (remove prunes composed subtree)."""
+    old_parent = child._parent
+    if old_parent is None:
+        return
+    old_parent._nodes._remove(child)
+    child._detach()
+    new_parent._nodes._append(child)
+    child._attach(new_parent)
+    old_parent.refresh(layout=True)
+    new_parent.refresh(layout=True)
+
+
 class Pane(Widget):
     """A single pane in the workspace, containing a TabbedContent."""
     
@@ -126,8 +140,7 @@ class Workspace(Widget):
             old_pane = self.active_pane
             h_container = Horizontal(classes="workspace-split-row")
             await parent.mount(h_container, after=old_pane)
-            await old_pane.remove()
-            await h_container.mount(old_pane)
+            _reparent_preserving_children(old_pane, h_container)
             await h_container.mount(new_pane)
             
         self.set_active_pane(new_pane)
@@ -146,8 +159,7 @@ class Workspace(Widget):
             old_pane = self.active_pane
             v_container = Vertical(classes="workspace-split-stack")
             await parent.mount(v_container, after=old_pane)
-            await old_pane.remove()
-            await v_container.mount(old_pane)
+            _reparent_preserving_children(old_pane, v_container)
             await v_container.mount(new_pane)
             
         self.set_active_pane(new_pane)
