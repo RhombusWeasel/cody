@@ -99,6 +99,8 @@ class CustomTerminal(Terminal):
         self._screen.resize(self.nrow, self.ncol)
 
     async def on_key(self, event: events.Key) -> None:
+        # Terminal consumes ctrl+letter before app BINDINGS run; mirror AppShellKeybindsMixin
+        # (ctrl+d/ctrl+t globally) plus send-to-chat. ctrl+s matches util-sidebar toggle while focused here.
         if event.key in ["ctrl+i", "ctrl+t", "ctrl+s"]:
             if event.key == "ctrl+i":
                 self.app.action_send_terminal_to_chat()
