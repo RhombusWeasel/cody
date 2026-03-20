@@ -6,6 +6,7 @@ A TUI (terminal user interface) AI coding assistant built with [Textual](https:/
 
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/) (recommended) or pip
+- Dependencies include **`cryptography`** (config + project DB at rest)
 
 ## Installation
 
@@ -54,9 +55,29 @@ We only pass 3 tools to the agent by default
 Because of this they are discouraged and users should favour the below skills implementation.
 
 ### Config
-- Config layers (merge order): `~/.agents/cody_settings.json`, `$CODY_DIR/.agents/cody_config.json`, `{project}/.agents/cody_config.json`. Later paths override earlier ones; saves go to the project path in that list.
-- **On disk, settings are only stored encrypted** as `*.json.enc` (PBKDF2-SHA256 + Fernet). If a plaintext `*.json` is found at load, it is read, removed, and written as `.enc` using your password. Saves always write `.enc` and delete any stray plaintext file at the save path. While running, merged settings live in memory as a dict. Scripts (e.g. `run_agent`) need `--config-password-file` or `CODY_CONFIG_PASSWORD` whenever plaintext or encrypted configs exist, or for non-interactive first saves.
+- Config layers (merge order): `~/.agents/cody_settings.json`, `$CODY_DIR/.agents/cody_config.json`, `{project}/.agents/cody_config.json`. Later paths override earlier ones; saves go to the project path in that list. On disk these are stored as **`*.json.enc`** once migrated (see **Encryption at rest** below).
 - Provider/model selection, API keys, prompts, skill directories
+
+### Encryption at rest
+
+Cody uses the Python **`cryptography`** package: **PBKDF2-HMAC-SHA256** derives a key from your password; **Fernet** encrypts the payload (authenticated encryption). You use one **config password** for both settings and the built-in project database (unless noted below).
+
+**Configuration (`*.json.enc`)**
+
+- Plaintext `*.json` at a config path is loaded once, deleted, and replaced with `*.json.enc` after you enter the password. New saves only write `.enc` and remove any stray plaintext at the save path.
+- While the app runs, merged settings live in memory as a normal dict.
+
+**Project database (`cody_data.db.enc`)**
+
+- Chats, agents, todos, and input history use SQLite. The logical path is still **`$CODY_DIR/.agents/cody_data.db`** (what you see in the UI and in `db.connections` for “Cody Data”).
+- **On disk** the file is **`cody_data.db.enc`**: same binary envelope as config (not SQLCipher). The key uses the **same password** as config; when an encrypted config layer is already loaded, the DB reuses that layer’s **salt and iteration count** when possible (otherwise a salt is created and tied to the project config save path).
+- At runtime the DB image is loaded with **`sqlite3` `deserialize`** into memory; after each query the DB is **serialized** and written back to `.enc` (with a temp file + replace).
+- A legacy plaintext **`cody_data.db`** is migrated on first open: encrypted to `.enc`, then the plain file is removed.
+- **Other** SQLite databases you add under `db.connections` are still ordinary **unencrypted** files on disk.
+
+**Passwords for scripts and automation**
+
+- Set `CODY_CONFIG_PASSWORD` or pass `--config-password-file` when any encrypted config or the project DB already exists, or for non-interactive first saves. The value may be visible in `ps` on some systems.
 
 `db.connections` stores sidebar database connections. Each entry may include:
 
@@ -65,8 +86,6 @@ Because of this they are discouraged and users should favour the below skills im
 - `label` — optional display name
 - `opts` — backend-specific options object
 - `auth` — optional authentication (see below)
-
-The Cody project database (chats, agents, todos) uses SQLite under `$CODY_DIR/.agents/cody_data.db`. On disk it is stored as **`cody_data.db.enc`**: the same PBKDF2 + Fernet envelope as config. The key uses your config password and, when any encrypted config layer is loaded, **the same salt and iteration count** as that layer (otherwise a new salt is created and kept alongside the project config save path). At runtime the DB is held in memory (`sqlite3` serialize/deserialize); each write updates the encrypted file. A legacy plaintext `cody_data.db` is migrated on first open (removed after a successful `.enc` write). Other SQLite paths you add in settings stay unencrypted plain files.
 
 **Database `auth` object** (optional, per connection):
 
