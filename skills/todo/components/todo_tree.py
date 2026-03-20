@@ -5,13 +5,14 @@ from textual import work
 from components.tree.generic_tree import GenericTree
 from utils.tree_model import TreeEntry
 from utils.db import db_manager
+from utils.paths import canonical_todo_scope, local_todo_scope_match_values
 
 class TodoTree(GenericTree):
     """Tree view for displaying and managing todos for a specific scope."""
 
     def __init__(self, scope: str, **kwargs):
         super().__init__(**kwargs)
-        self.scope = scope
+        self.scope = canonical_todo_scope(scope)
         self._todos = []
         self._expanded.update(["pending", "completed"])
 
@@ -22,9 +23,16 @@ class TodoTree(GenericTree):
     @work
     async def load_todos(self) -> None:
         db_path = db_manager.get_project_db_path()
-        query = 'SELECT id, label, status FROM todos WHERE scope = ? ORDER BY creation_time DESC'
+        if self.scope == "global":
+            query = 'SELECT id, label, status FROM todos WHERE scope = ? ORDER BY creation_time DESC'
+            params = ("global",)
+        else:
+            aliases = local_todo_scope_match_values(self.scope)
+            placeholders = ",".join("?" * len(aliases))
+            query = f'SELECT id, label, status FROM todos WHERE scope IN ({placeholders}) ORDER BY creation_time DESC'
+            params = tuple(aliases)
         try:
-            columns, rows = await db_manager.execute(db_path, query, (self.scope,))
+            columns, rows = await db_manager.execute(db_path, query, params)
             self._todos = [{"id": r[0], "label": r[1], "status": r[2]} for r in rows]
             self.reload()
         except Exception as e:
@@ -140,7 +148,8 @@ class TodoTree(GenericTree):
     @work
     async def update_scope(self, node_id: Any, scope_type: str) -> None:
         from utils.cfg_man import cfg
-        new_scope = "global" if scope_type == "global" else cfg.get('session.working_directory', '.')
+        raw = "global" if scope_type == "global" else cfg.get("session.working_directory", ".")
+        new_scope = canonical_todo_scope(raw)
         
         db_path = db_manager.get_project_db_path()
         query = 'UPDATE todos SET scope = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'

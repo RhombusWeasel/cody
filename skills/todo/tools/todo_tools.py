@@ -1,6 +1,7 @@
 import sqlite3
 from utils.db import db_manager
 from utils.cfg_man import cfg
+from utils.paths import canonical_todo_scope, local_todo_scope_match_values
 
 def _get_db_path():
     return db_manager.get_project_db_path()
@@ -20,6 +21,7 @@ async def add_todo(label: str, scope: str, todo_text: str, deadline: str = None)
         VALUES (?, ?, ?, ?)
     '''
     try:
+        scope = canonical_todo_scope(scope)
         await db_manager.execute(db_path, query, (label, scope, todo_text, deadline))
         # Get the last inserted id
         columns, rows = await db_manager.execute(db_path, "SELECT last_insert_rowid()", ())
@@ -41,8 +43,13 @@ async def get_todos(scope: str = None, status: str = None) -> list:
     params = []
     
     if scope:
-        query += ' AND scope = ?'
-        params.append(scope)
+        if scope == "global":
+            query += " AND scope = ?"
+            params.append("global")
+        else:
+            aliases = local_todo_scope_match_values(scope)
+            query += f' AND scope IN ({",".join("?" * len(aliases))})'
+            params.extend(aliases)
     if status:
         query += ' AND status = ?'
         params.append(status)

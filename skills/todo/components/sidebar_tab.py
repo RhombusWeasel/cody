@@ -5,6 +5,7 @@ from textual import work
 
 from utils.cfg_man import cfg
 from utils.db import db_manager
+from utils.paths import canonical_todo_scope
 from components.utils.buttons import AddButton
 from skills.todo.components.todo_tree import TodoTree
 
@@ -25,7 +26,7 @@ class TodoSidebarTab(Vertical):
         with Vertical(classes="todo-section"):
             with Horizontal(classes="todo-header"):
                 yield Label(f"{FOLDER} Local Todos", classes="todo-title")
-                working_dir = cfg.get('session.working_directory', '.')
+                working_dir = canonical_todo_scope(cfg.get("session.working_directory", "."))
                 yield AddButton(action=lambda w=working_dir: self.add_todo(w), tooltip="Add Local Todo")
             yield TodoTree(scope=working_dir, id="local_todo_tree")
 
