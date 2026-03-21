@@ -6,7 +6,8 @@ import git
 
 from components.utils.input_modal import InputModal
 from utils.git import (
-  pop_stash, drop_stash, revert_commit, merge_branch, rename_branch
+  get_file_status,
+  pop_stash, drop_stash, revert_commit, merge_branch, rename_branch,
 )
 
 
@@ -51,6 +52,12 @@ def handle_git_action(
     selection_changed_cb()
     return
 
+  if action == "select_all_removed":
+    selected.update(_removed_paths(repo))
+    reload_cb()
+    selection_changed_cb()
+    return
+
   if action == "clear_selection":
     selected.clear()
     reload_cb()
@@ -76,6 +83,22 @@ def handle_git_action(
       reload_cb()
     except Exception:
       app.notify(f"Failed to unstage {path}", severity="error")
+    return
+
+  if action == "git_rm_removed" and isinstance(node_id, dict) and node_id.get("type") == "change":
+    if not node_id.get("removed"):
+      return
+    path = node_id["path"]
+    if node_id.get("staged"):
+      app.notify("Deletion already staged", severity="information")
+      return
+    try:
+      repo.git.rm("--", path)
+      app.notify(f"git rm: {path}")
+      reload_cb()
+    except git.exc.GitCommandError as e:
+      err = (getattr(e, "stderr", None) or str(e) or "").strip()
+      app.notify(f"git rm failed: {err}" if err else "git rm failed", severity="error")
     return
 
   if action == "discard" and isinstance(node_id, dict) and node_id.get("type") == "change":
@@ -247,15 +270,29 @@ def handle_git_action(
 
 def _staged_paths(repo: git.Repo) -> set[str]:
   try:
-    return {d.a_path for d in repo.index.diff("HEAD")} if repo.head.is_valid() else set()
+    return {s["path"] for s in get_file_status(repo)["staged"] if s["status"] != "D"}
   except Exception:
     return set()
 
 
 def _unstaged_paths(repo: git.Repo) -> set[str]:
   try:
-    staged = _staged_paths(repo)
-    return {d.a_path for d in repo.index.diff(None) if d.a_path not in staged}
+    return {s["path"] for s in get_file_status(repo)["unstaged"] if s["status"] != "D"}
+  except Exception:
+    return set()
+
+
+def _removed_paths(repo: git.Repo) -> set[str]:
+  try:
+    st = get_file_status(repo)
+    paths: set[str] = set()
+    for s in st["staged"]:
+      if s["status"] == "D":
+        paths.add(s["path"])
+    for s in st["unstaged"]:
+      if s["status"] == "D":
+        paths.add(s["path"])
+    return paths
   except Exception:
     return set()
 

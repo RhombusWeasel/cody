@@ -48,31 +48,46 @@ def revert_to_checkpoint(path: str, commit_hash: str) -> bool:
     return False
 
 
+def _parse_diff_name_status(output: str) -> list[dict]:
+  """Parse `git diff --name-status` lines into [{"path", "status"}, ...]."""
+  rows: list[dict] = []
+  for line in output.splitlines():
+    line = line.strip()
+    if not line:
+      continue
+    parts = line.split("\t")
+    if len(parts) < 2:
+      continue
+    tag = parts[0].strip()
+    if not tag:
+      continue
+    letter = tag[0]
+    if letter in ("R", "C") and len(parts) >= 3:
+      path = parts[2]
+    else:
+      path = parts[1]
+    rows.append({"path": path, "status": letter})
+  return rows
+
+
 def get_file_status(repo: git.Repo) -> dict[str, list[dict]]:
-  """Get staged, unstaged, and untracked files from a repo."""
-  staged = []
-  unstaged = []
-  untracked = []
-  
+  """Get staged, unstaged, and untracked files from a repo.
+
+  Uses porcelain `git diff --name-status` so staged deletions show as D (GitPython
+  index.diff('HEAD') mislabels them as A due to reverse diff semantics).
+  """
+  staged: list[dict] = []
+  unstaged: list[dict] = []
+  untracked: list[dict] = []
   try:
-    staged_diffs = list(repo.index.diff("HEAD", create_patch=False)) if repo.head.is_valid() else []
-    unstaged_diffs = list(repo.index.diff(None, create_patch=False))
-
-    staged_paths = {d.a_path for d in staged_diffs}
-    for d in staged_diffs:
-      letter = "A" if d.change_type == "A" else "D" if d.change_type == "D" else "M"
-      staged.append({"path": d.a_path, "status": letter})
-
-    for d in unstaged_diffs:
-      if d.a_path not in staged_paths:
-        letter = "A" if d.change_type == "A" else "D" if d.change_type == "D" else "M"
-        unstaged.append({"path": d.a_path, "status": letter})
-
+    cached_raw = repo.git.diff("--cached", "--name-status") or ""
+    staged = _parse_diff_name_status(cached_raw)
+    unstaged_raw = repo.git.diff("--name-status") or ""
+    unstaged = _parse_diff_name_status(unstaged_raw)
     for p in repo.untracked_files:
       untracked.append({"path": p, "status": "??"})
   except Exception:
     pass
-    
   return {"staged": staged, "unstaged": unstaged, "untracked": untracked}
 
 

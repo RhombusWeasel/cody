@@ -4,7 +4,7 @@ from typing import Callable
 
 from textual.widgets import Button
 
-from utils import fs_tree
+from . import fs_tree
 from utils.icons import DELETE, EDIT, NEW_FILE, NEW_FOLDER
 from utils.editors import open_file_editor
 from components.utils.input_modal import InputModal

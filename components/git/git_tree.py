@@ -31,12 +31,14 @@ class GitTree(GenericTree):
     self._selected_for_action = selected_for_action or set()
     self.staged_paths: set[str] = set()
     self.unstaged_paths: set[str] = set()
+    self.removed_paths: set[str] = set()
     self.untracked_paths: set[str] = set()
     super().__init__(icon_set=GIT_ICON_SET, **kwargs)
     self._expanded.update([
       ("cat", "branches"),
       ("cat", "staged"),
       ("cat", "changes"),
+      ("cat", "removed"),
       ("cat", "untracked"),
       ("cat", "commits"),
       ("cat", "stashes"),
@@ -115,14 +117,21 @@ class GitTree(GenericTree):
 
     branches = get_branches_info(repo)
     status = get_file_status(repo)
-    staged_list = [{"path": s["path"], "status": s["status"], "staged": True} for s in status["staged"]]
-    unstaged_list = [{"path": s["path"], "status": s["status"], "staged": False} for s in status["unstaged"]]
+    staged_all = [{"path": s["path"], "status": s["status"], "staged": True} for s in status["staged"]]
+    unstaged_all = [{"path": s["path"], "status": s["status"], "staged": False} for s in status["unstaged"]]
+    removed_list = (
+      [s for s in staged_all if s["status"] == "D"]
+      + [s for s in unstaged_all if s["status"] == "D"]
+    )
+    staged_list = [s for s in staged_all if s["status"] != "D"]
+    unstaged_list = [s for s in unstaged_all if s["status"] != "D"]
     untracked_list = [{"path": s["path"], "status": s["status"], "staged": False} for s in status["untracked"]]
     commits = get_recent_commits(repo, 15)
     stashes = get_stashes(repo)
 
     self.staged_paths = {s["path"] for s in staged_list}
     self.unstaged_paths = {s["path"] for s in unstaged_list}
+    self.removed_paths = {s["path"] for s in removed_list}
     self.untracked_paths = {s["path"] for s in untracked_list}
 
     result.extend(self._build_category(
@@ -160,6 +169,25 @@ class GitTree(GenericTree):
       is_last_category=False,
       item_formatter=lambda s: (
         {"type": "change", "path": s["path"], "staged": False, "untracked": False},
+        f"{s['status']} {s['path']}"
+      )
+    ))
+
+    result.extend(self._build_category(
+      cat_id="removed",
+      display_name="Removed",
+      items=removed_list,
+      empty_text="(none)",
+      icon_name="change",
+      is_last_category=False,
+      item_formatter=lambda s: (
+        {
+          "type": "change",
+          "path": s["path"],
+          "staged": s["staged"],
+          "untracked": False,
+          "removed": True,
+        },
         f"{s['status']} {s['path']}"
       )
     ))
@@ -233,19 +261,32 @@ class GitTree(GenericTree):
       btns.append(ActionButton(icon, action=lambda n=node_id, a=action: self.on_button_action(n, a), tooltip=tooltip, classes="action-btn"))
       return btns
 
+    if node_id == ("cat", "removed"):
+      all_selected = bool(self.removed_paths) and self.removed_paths.issubset(self._selected_for_action)
+      icon = CLEAR_SELECTION if all_selected else SELECT_ALL
+      action = "clear_selection" if all_selected else "select_all_removed"
+      tooltip = "Clear selection" if all_selected else "Select all removed"
+      btns.append(ActionButton(icon, action=lambda n=node_id, a=action: self.on_button_action(n, a), tooltip=tooltip, classes="action-btn"))
+      return btns
+
     if isinstance(node_id, dict) and node_id.get("type") == "change":
       path = node_id.get("path", "")
       staged = node_id.get("staged", False)
       untracked = node_id.get("untracked", False)
+      is_removed = node_id.get("removed", False)
       label = CHECKED if path in self._selected_for_action else UNCHECKED
 
       if staged:
         btns.append(ActionButton(GIT_UNSTAGE, action=lambda n=node_id: self.on_button_action(n, "unstage_file"), tooltip="Unstage file", classes="action-btn"))
       else:
         btns.append(ActionButton(GIT_ADD, action=lambda n=node_id: self.on_button_action(n, "stage_file"), tooltip="Stage file", classes="action-btn"))
+        if is_removed:
+          btns.append(ActionButton(DELETE, action=lambda n=node_id: self.on_button_action(n, "git_rm_removed"), tooltip="git rm (stage deletion)", classes="action-btn"))
 
-      btns.append(ActionButton(GIT_DISCARD, action=lambda n=node_id: self.on_button_action(n, "discard"), tooltip="Discard changes", classes="action-btn"))
-      btns.append(ActionButton(GIT_IGNORE, action=lambda n=node_id: self.on_button_action(n, "add_to_gitignore"), tooltip="Add to .gitignore", classes="action-btn"))
+      discard_tip = "Restore file from last commit" if is_removed else "Discard changes"
+      btns.append(ActionButton(GIT_DISCARD, action=lambda n=node_id: self.on_button_action(n, "discard"), tooltip=discard_tip, classes="action-btn"))
+      if not is_removed:
+        btns.append(ActionButton(GIT_IGNORE, action=lambda n=node_id: self.on_button_action(n, "add_to_gitignore"), tooltip="Add to .gitignore", classes="action-btn"))
       btns.append(ActionButton(label, action=lambda n=node_id: self.on_button_action(n, "toggle_select"), tooltip="Toggle for commit/stage/unstage", classes="action-btn"))
       return btns
 
