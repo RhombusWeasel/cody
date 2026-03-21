@@ -99,9 +99,10 @@ class DBTree(GenericTree):
       path, category = node_id
       if path not in db_manager.connections:
         return
+      query = f"SELECT name FROM sqlite_master WHERE type='{category}' AND name NOT LIKE 'sqlite_%' ORDER BY name;"
       try:
-        names = await db_manager.list_schema_objects(path, category)
-        self._child_cache[node_id] = names if names else ["None found"]
+        cols, results = await db_manager.execute(path, query)
+        self._child_cache[node_id] = [row[0] for row in results] if results else ["None found"]
       except Exception as e:
         self._child_cache[node_id] = [f"Error: {e}"]
 
