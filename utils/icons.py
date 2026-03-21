@@ -5,6 +5,7 @@ CHATS = ""
 FILE_SYSTEM = ""
 GIT = ""
 DB = ""
+VAULT = "󰌆"
 SKILLS = ""
 AGENTS = "󱙺"
 SETTINGS = ""
@@ -23,6 +24,9 @@ NEW_FOLDER = ""
 RUN = ""
 EXPORT_CSV = "󰈇"
 OPEN_EXTERNAL = "󰏌"
+COPY_CLIPBOARD = "󰆏"
+EYE = "󰈈"
+EYE_OFF = "󰈉"
 
 # Database
 DATABASE = DB

@@ -13,3 +13,35 @@ GenericTree {
   GenericTree .tree_rows TreeRow:odd {
     background: $surface-lighten-2;
   }
+
+  GenericTree .tree_rows VaultSecretLineRow:even {
+    background: $surface;
+  }
+
+  GenericTree .tree_rows VaultSecretLineRow:odd {
+    background: $surface-lighten-2;
+  }
+
+  VaultSecretLineRow {
+    width: 100%;
+    height: auto;
+    min-height: 1;
+  }
+
+  VaultSecretLineRow .vault-secret-line {
+    width: 100%;
+    height: auto;
+  }
+
+  VaultSecretLineRow .vault-secret-input {
+    width: 1fr;
+    min-width: 6;
+    max-width: 1fr;
+  }
+
+  VaultSecretLineRow .vault-note-body {
+    width: 1fr;
+    height: auto;
+    min-height: 2;
+    max-height: 10;
+  }
