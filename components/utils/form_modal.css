@@ -14,14 +14,13 @@ FormModal {
   width: 100%;
   text-style: bold;
   text-align: center;
-  color: $text;
+  color: $primary;
   margin-bottom: 1;
   height: 1;
 }
 
 #form_modal_body {
   height: 1fr;
-  min-height: 0;
   padding: 0 1;
 }
 
@@ -37,8 +36,7 @@ FormModal {
 }
 
 #form_modal_body TextArea {
-  height: 1fr;
-  min-height: 5;
+  height: 10;
   width: 100%;
   margin-bottom: 1;
 }

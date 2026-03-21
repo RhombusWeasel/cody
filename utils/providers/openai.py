@@ -5,42 +5,6 @@ from utils.providers.base import ChatResponse, Message, ToolCall
 from utils.providers.tools import callables_to_openai_tools
 
 
-def _tool_call_to_openai_api(tc: ToolCall | dict, i: int) -> dict:
-  """OpenAI chat.completions expects tool_calls with string arguments; accept ToolCall or dict (e.g. from DB)."""
-  if isinstance(tc, dict):
-    tc_id = tc.get("id") or f"call_{i}"
-    fn = tc.get("function")
-    if isinstance(fn, dict):
-      name = fn.get("name") or ""
-      raw_args = fn.get("arguments", {})
-    elif fn is not None and hasattr(fn, "name"):
-      name = getattr(fn, "name", "") or ""
-      raw_args = getattr(fn, "arguments", {})
-    else:
-      name = ""
-      raw_args = {}
-    if isinstance(raw_args, str):
-      args_str = raw_args.strip() or "{}"
-    else:
-      args_str = json.dumps(raw_args) if raw_args else "{}"
-    return {
-      "id": tc_id,
-      "type": "function",
-      "function": {"name": name, "arguments": args_str},
-    }
-  name = tc.function.name
-  args = tc.function.arguments
-  if isinstance(args, dict):
-    args_str = json.dumps(args)
-  else:
-    args_str = (args if isinstance(args, str) else None) or "{}"
-  return {
-    "id": tc.id or f"call_{i}",
-    "type": "function",
-    "function": {"name": name, "arguments": args_str},
-  }
-
-
 def _to_openai_messages(messages: list[dict]) -> list[dict]:
   """Convert our message format to OpenAI API format."""
   out = []
@@ -56,7 +20,15 @@ def _to_openai_messages(messages: list[dict]) -> list[dict]:
     if role == "assistant" and m.get("tool_calls"):
       msg = {"role": "assistant", "content": content or None}
       msg["tool_calls"] = [
-        _tool_call_to_openai_api(tc, i) for i, tc in enumerate(m["tool_calls"])
+        {
+          "id": tc.id or f"call_{i}",
+          "type": "function",
+          "function": {
+            "name": tc.function.name,
+            "arguments": json.dumps(tc.function.arguments) if isinstance(tc.function.arguments, dict) else (tc.function.arguments or "{}"),
+          },
+        }
+        for i, tc in enumerate(m["tool_calls"])
       ]
       out.append(msg)
     else:

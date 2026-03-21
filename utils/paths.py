@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 
 def get_cody_dir() -> str:
     """Returns the absolute path to the Cody application directory."""
@@ -21,34 +20,6 @@ def get_tiered_paths(subpath: str, working_dir: str) -> list[str]:
         os.path.join(get_global_agents_dir(), subpath),
         os.path.join(working_dir, ".agents", subpath)
     ]
-
-def canonical_todo_scope(scope: str) -> str:
-  """Normalize todo scope: 'global' or resolved absolute working-directory path."""
-  if scope == "global":
-    return "global"
-  return str(Path(scope).expanduser().resolve())
-
-
-def local_todo_scope_match_values(working_scope: str) -> list[str]:
-  """Distinct DB scope values that refer to the same directory as working_scope."""
-  if working_scope == "global":
-    return ["global"]
-  expanded = os.path.expanduser(working_scope)
-  variants = [
-    working_scope,
-    expanded,
-    os.path.normpath(expanded),
-    os.path.abspath(expanded),
-    str(Path(expanded).resolve()),
-  ]
-  seen: set[str] = set()
-  out: list[str] = []
-  for v in variants:
-    if v not in seen:
-      seen.add(v)
-      out.append(v)
-  return out
-
 
 def resolve_dir_templates(directories: list[str], working_dir: str) -> list[str]:
     """

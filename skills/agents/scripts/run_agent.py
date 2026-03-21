@@ -1,5 +1,6 @@
 import sys
 import os
+import sqlite3
 import argparse
 import asyncio
 import json
@@ -11,28 +12,29 @@ if project_root not in sys.path:
 
 import utils.fs as fs
 from utils.db import db_manager
-from utils.cfg_man import cfg, ensure_config_loaded
+from utils.cfg_man import cfg
 from utils.tool import get_tools
 from utils.agent import TaskAgent
 
 
 def _load_agent(name: str) -> dict | None:
-  p = db_manager.get_project_db_path()
-  _, rows = db_manager.execute_sync(
-    p,
-    "SELECT name, description, system_prompt, tool_groups, provider, model FROM agents WHERE name = ?",
-    (name,),
+  conn = sqlite3.connect(db_manager.get_project_db_path())
+  cursor = conn.cursor()
+  cursor.execute(
+    'SELECT name, description, system_prompt, tool_groups, provider, model FROM agents WHERE name = ?',
+    (name,)
   )
-  if not rows:
+  row = cursor.fetchone()
+  conn.close()
+  if not row:
     return None
-  row = rows[0]
   return {
-    "name": row[0],
-    "description": row[1],
-    "system_prompt": row[2],
-    "tool_groups": json.loads(row[3]) if row[3] else [],
-    "provider": row[4],
-    "model": row[5],
+    'name': row[0],
+    'description': row[1],
+    'system_prompt': row[2],
+    'tool_groups': json.loads(row[3]) if row[3] else [],
+    'provider': row[4],
+    'model': row[5],
   }
 
 
@@ -55,16 +57,10 @@ def main():
   parser.add_argument('--name', required=True, help='Agent name')
   parser.add_argument('--task', required=True, help='Task description')
   parser.add_argument('--working-directory', default=None, help='Working directory context')
-  parser.add_argument(
-    '--config-password-file',
-    default=None,
-    metavar='PATH',
-    help='Read config decryption password from file (if using encrypted config).',
-  )
   args = parser.parse_args()
 
-  working_dir = os.path.abspath(args.working_directory or os.getcwd())
-  ensure_config_loaded(working_dir, config_password_file=args.config_password_file)
+  working_dir = args.working_directory or os.getcwd()
+  cfg.load_project_config(working_dir)
   cfg.set('session.working_directory', working_dir)
 
   from utils.paths import get_tiered_paths

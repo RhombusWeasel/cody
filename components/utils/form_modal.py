@@ -14,7 +14,6 @@ class FormModal(ModalScreen):
 
   Schema field types:
     text     — single-line Input
-    password — Input with password=True
     textarea — multi-line TextArea
     code     — code editor TextArea (add "language" key for syntax highlighting)
     row      — side-by-side group; use "fields" key with a list of child field dicts
@@ -63,11 +62,9 @@ class FormModal(ModalScreen):
     yield Label(label, classes="field-label")
 
     if field_type == "code":
-      yield TextArea.code_editor(initial, id=widget_id, language=field.get("language"), classes="form-modal-textarea")
+      yield TextArea.code_editor(initial, id=widget_id, language=field.get("language"))
     elif field_type == "textarea":
-      yield TextArea(initial, id=widget_id, classes="form-modal-textarea")
-    elif field_type == "password":
-      yield Input(initial, id=widget_id, placeholder=placeholder, password=True)
+      yield TextArea(initial, id=widget_id)
     else:
       yield Input(initial, id=widget_id, placeholder=placeholder)
 
