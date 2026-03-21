@@ -7,12 +7,14 @@ from textual.app import ComposeResult
 from textual.containers import Vertical, Horizontal
 from textual.widgets import Button, Label, DataTable
 from textual import on
-from textual.widgets._data_table import RowKey
 
 from components.utils.form_modal import FormModal
 from components.utils.input_modal import InputModal
 from utils.db import db_manager
 import utils.icons as icons
+
+sidebar_label = icons.AGENTS
+sidebar_tooltip = "Agents"
 
 AGENT_SCHEMA = [
   {"key": "name",        "label": "Name",        "type": "text",     "placeholder": "e.g. code-reviewer", "required": True},
@@ -156,3 +158,7 @@ class AgentsSidebarTab(Vertical):
     )
     self.app.notify(f"Agent '{data['name']}' saved.")
     await self._refresh()
+
+
+def get_sidebar_widget():
+  return AgentsSidebarTab()

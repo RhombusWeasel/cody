@@ -7,7 +7,6 @@ from components.db.db_sidebar_tab import DBSidebarTab
 from components.fs.file_tree import FileTreeTab
 from components.git.git_sidebar_tab import GitSidebarTab
 from components.sidebar.chat_history import ChatHistoryTab
-from components.agents.agents_sidebar_tab import AgentsSidebarTab
 
 from utils.cfg_man import cfg
 from utils.skill_components import discover_sidebar_tabs
@@ -20,7 +19,6 @@ TAB_TOOLTIPS = {
   "tab-git": "Git",
   "tab-tools": "Skills",
   "tab-db": "DB Connections",
-  "tab-agents": "Agents",
   "tab-settings": "Settings",
 }
 
@@ -43,8 +41,6 @@ class Sidebar(VerticalScroll):
                 yield ToolList()
             with TabPane(icons.DB, id="tab-db", classes="tabbed-content-label"):
                 yield DBSidebarTab()
-            with TabPane(icons.AGENTS, id="tab-agents", classes="tabbed-content-label"):
-                yield AgentsSidebarTab()
             for tab_id, label, factory, tooltip in discover_sidebar_tabs():
                 with TabPane(label, id=tab_id, classes="tabbed-content-label"):
                     yield factory()

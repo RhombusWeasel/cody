@@ -3,6 +3,7 @@ import re
 import json
 from pathlib import Path
 from utils.cfg_man import cfg, deep_update
+from utils.paths import parse_directory_list, resolve_dir_templates, tiered_dir_templates
 
 def parse_frontmatter(content: str) -> tuple[dict, str]:
     """
@@ -47,24 +48,11 @@ class SkillManager:
         """
         self.skills = {}
         working_dir = cfg.get('session.working_directory', os.getcwd())
-        
-        default_dirs = [
-            "$CODY_DIR/skills",
-            "~/.agents/skills",
-            "{working_directory}/.agents/skills"
-        ]
-        
-        directories = cfg.get('skills.directories', default_dirs)
-        if isinstance(directories, str):
-            try:
-                import ast
-                directories = ast.literal_eval(directories)
-            except Exception:
-                directories = [directories]
-        if not isinstance(directories, list):
-            directories = default_dirs
-            
-        from utils.paths import resolve_dir_templates
+        default_dirs = tiered_dir_templates("skills")
+        directories = parse_directory_list(
+            cfg.get('skills.directories', default_dirs),
+            default_dirs,
+        )
         search_paths = [Path(d) for d in resolve_dir_templates(directories, working_dir)]
         
         for base_path in search_paths:

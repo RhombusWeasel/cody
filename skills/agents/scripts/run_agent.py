@@ -63,8 +63,8 @@ def main():
   cfg.load_project_config(working_dir)
   cfg.set('session.working_directory', working_dir)
 
-  from utils.paths import get_tiered_paths
-  for tool_path in get_tiered_paths('tools', working_dir):
+  from utils.paths import resolved_tiered_paths
+  for tool_path in resolved_tiered_paths('tools', working_dir):
     if os.path.exists(tool_path):
       fs.load_folder(tool_path, '.py')
 

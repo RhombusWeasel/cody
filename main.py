@@ -52,8 +52,8 @@ for _skill in skill_manager.skills.values():
   if os.path.isdir(_skill_css_dir):
     _css_paths.extend(fs.discover_css(_skill_css_dir))
 
-from utils.paths import get_tiered_paths
-for tool_path in get_tiered_paths('tools', args.working_directory):
+from utils.paths import resolved_tiered_paths
+for tool_path in resolved_tiered_paths('tools', args.working_directory):
   if os.path.exists(tool_path):
     fs.load_folder(tool_path, '.py')
 

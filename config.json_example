@@ -29,8 +29,8 @@
   },
   "skills": {
     "directories": [
-      "~/.agents/skills",
       "$CODY_DIR/skills",
+      "~/.agents/skills",
       "{working_directory}/.agents/skills"
     ],
     "enabled": {

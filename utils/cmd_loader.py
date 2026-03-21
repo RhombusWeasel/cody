@@ -1,9 +1,13 @@
 import os
 import importlib.util
 import inspect
-from pathlib import Path
 
 from utils.cfg_man import cfg
+from utils.paths import (
+    default_command_directory_templates,
+    parse_directory_list,
+    resolve_dir_templates,
+)
 
 class CommandBase:
     description: str = "Base command"
@@ -39,24 +43,11 @@ def load_commands() -> dict[str, CommandBase]:
     """
     commands = {}
     working_dir = cfg.get('session.working_directory', os.getcwd())
-
-    default_dirs = [
-        "$CODY_DIR/components/chat/cmd",
-        "$CODY_DIR/cmd",
-        "~/.agents/commands",
-        "{working_directory}/.agents/commands"
-    ]
-    directories = cfg.get('commands.directories', default_dirs)
-    if isinstance(directories, str):
-        try:
-            import ast
-            directories = ast.literal_eval(directories)
-        except Exception:
-            directories = [directories]
-    if not isinstance(directories, list):
-        directories = default_dirs
-
-    from utils.paths import resolve_dir_templates
+    default_dirs = default_command_directory_templates()
+    directories = parse_directory_list(
+        cfg.get('commands.directories', default_dirs),
+        default_dirs,
+    )
     for d in resolve_dir_templates(directories, working_dir):
         _load_from_dir(commands, d)
 
