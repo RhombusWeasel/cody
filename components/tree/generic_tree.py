@@ -82,6 +82,7 @@ class GenericTree(Vertical):
       is_expanded=entry.is_expanded,
       display_name=entry.display_name,
       icon=entry.icon,
+      display_rich=entry.display_rich,
       button_factory=lambda nid, exp: self._get_buttons_for_entry(nid, exp),
     )
 

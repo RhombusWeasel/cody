@@ -1,6 +1,7 @@
 """Generic tree row - single Horizontal, no nesting."""
 from typing import Callable, Any
 
+from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.events import Click
@@ -41,6 +42,7 @@ class TreeRow(Widget):
     display_name: str,
     icon: str,
     button_factory: Callable[[Any, bool], list[Button]],
+    display_rich: Text | None = None,
     **kwargs,
   ):
     super().__init__(**kwargs)
@@ -50,16 +52,20 @@ class TreeRow(Widget):
     self.is_expanded = is_expanded
     self.display_name = display_name
     self.icon = icon
+    self.display_rich = display_rich
     self._button_factory = button_factory
 
   def compose(self) -> ComposeResult:
     expand = (EXPAND_DOWN + " ") if (self.is_expandable and self.is_expanded) else ((EXPAND_RIGHT + " ") if self.is_expandable else "  ")
-    label_text = self.icon + " " + self.display_name
+    if self.display_rich is not None:
+      label_content: str | Text = Text(self.icon + " ") + self.display_rich
+    else:
+      label_content = self.icon + " " + self.display_name
 
     with Horizontal():
       yield Label(self.indent, classes="tree-indent", markup=False)
       yield Label(expand, classes="tree-expand", markup=False)
-      yield Label(label_text, classes="tree-label", markup=False)
+      yield Label(label_content, classes="tree-label", markup=False)
       for btn in self._button_factory(self.node_id, self.is_expandable):
         yield btn
 

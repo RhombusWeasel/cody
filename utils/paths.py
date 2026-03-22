@@ -61,8 +61,12 @@ def parse_directory_list(raw, fallback: list[str]) -> list[str]:
     return directories
 
 def default_command_directory_templates() -> list[str]:
-    """Built-in chat commands first, then standard tiered commands directories."""
-    return ["$CODY_DIR/components/chat/cmd"] + tiered_dir_templates("commands")
+    """
+    Config template list for explicit slash-command dirs only (first → last).
+    load_commands() in utils.cmd_loader also appends each enabled skill's cmd/
+    directory (same tier order as skill discovery); later dirs override same name.
+    """
+    return ["$CODY_DIR/cmd"]
 
 def resolved_theme_paths(working_dir: str) -> list[str]:
     """

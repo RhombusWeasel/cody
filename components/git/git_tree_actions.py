@@ -58,6 +58,12 @@ def handle_git_action(
     selection_changed_cb()
     return
 
+  if action == "select_all_added":
+    selected.update(_added_paths(repo))
+    reload_cb()
+    selection_changed_cb()
+    return
+
   if action == "clear_selection":
     selected.clear()
     reload_cb()
@@ -270,14 +276,14 @@ def handle_git_action(
 
 def _staged_paths(repo: git.Repo) -> set[str]:
   try:
-    return {s["path"] for s in get_file_status(repo)["staged"] if s["status"] != "D"}
+    return {s["path"] for s in get_file_status(repo)["staged"] if s["status"] not in ("D", "A")}
   except Exception:
     return set()
 
 
 def _unstaged_paths(repo: git.Repo) -> set[str]:
   try:
-    return {s["path"] for s in get_file_status(repo)["unstaged"] if s["status"] != "D"}
+    return {s["path"] for s in get_file_status(repo)["unstaged"] if s["status"] not in ("D", "A")}
   except Exception:
     return set()
 
@@ -291,6 +297,21 @@ def _removed_paths(repo: git.Repo) -> set[str]:
         paths.add(s["path"])
     for s in st["unstaged"]:
       if s["status"] == "D":
+        paths.add(s["path"])
+    return paths
+  except Exception:
+    return set()
+
+
+def _added_paths(repo: git.Repo) -> set[str]:
+  try:
+    st = get_file_status(repo)
+    paths: set[str] = set()
+    for s in st["staged"]:
+      if s["status"] == "A":
+        paths.add(s["path"])
+    for s in st["unstaged"]:
+      if s["status"] == "A":
         paths.add(s["path"])
     return paths
   except Exception:

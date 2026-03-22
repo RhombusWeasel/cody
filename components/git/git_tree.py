@@ -2,6 +2,7 @@
 from typing import Any, Callable
 
 import git
+from rich.text import Text
 from textual.message import Message
 
 from components.tree import GenericTree
@@ -24,12 +25,40 @@ def _get_working_dir() -> str:
   return cfg.get("session.working_directory", ".")
 
 
+# Rich-only styles (Textual $theme tokens are invalid inside Rich Text.append).
+_GIT_STATUS_STYLES: dict[str, str] = {
+  "M": "bold yellow",
+  "A": "bold green",
+  "D": "bold red",
+  "R": "bold cyan",
+  "C": "bold cyan",
+  "T": "bold magenta",
+  "U": "bold red underline",
+  "??": "bold dim",
+}
+
+
+def _git_change_label_rich(status: str, path: str, path_max: int = 25) -> Text:
+  """Status prefix always shown; only the path is truncated from the left."""
+  st_style = _GIT_STATUS_STYLES.get(status, "bold dim")
+  prefix = f"{status} "
+  if len(path) <= path_max:
+    path_visible = path
+  else:
+    path_visible = "..." + path[-path_max:]
+  t = Text()
+  t.append(prefix, style=st_style)
+  t.append(path_visible)
+  return t
+
+
 class GitTree(GenericTree):
   """Flat git tree - branches, changes, commits, stashes."""
 
   def __init__(self, selected_for_action: set[str] | None = None, **kwargs):
     self._selected_for_action = selected_for_action or set()
     self.staged_paths: set[str] = set()
+    self.added_paths: set[str] = set()
     self.unstaged_paths: set[str] = set()
     self.removed_paths: set[str] = set()
     self.untracked_paths: set[str] = set()
@@ -37,6 +66,7 @@ class GitTree(GenericTree):
     self._expanded.update([
       ("cat", "branches"),
       ("cat", "staged"),
+      ("cat", "added"),
       ("cat", "changes"),
       ("cat", "removed"),
       ("cat", "untracked"),
@@ -52,7 +82,7 @@ class GitTree(GenericTree):
     empty_text: str,
     icon_name: str,
     is_last_category: bool,
-    item_formatter: Callable[[Any], tuple[dict, str]]
+    item_formatter: Callable[[Any], tuple[dict, str | Text]]
   ) -> list[TreeEntry]:
     result: list[TreeEntry] = []
 
@@ -84,18 +114,36 @@ class GitTree(GenericTree):
           branch = self.LAST_BRANCH if is_last else self.BRANCH
           node_id_dict, label = item_formatter(item)
           label_max = 25
-          if node_id_dict["type"] == "commit":
-            label_text = label[:label_max] + '...' if len(label) > label_max else label
+          if isinstance(label, Text):
+            result.append(TreeEntry(
+              node_id=node_id_dict,
+              indent=child_indent_prefix + branch,
+              is_expandable=False,
+              is_expanded=False,
+              display_name="",
+              icon=self.icon(icon_name),
+              display_rich=label,
+            ))
+          elif node_id_dict["type"] == "commit":
+            label_text = label[:label_max] + "..." if len(label) > label_max else label
+            result.append(TreeEntry(
+              node_id=node_id_dict,
+              indent=child_indent_prefix + branch,
+              is_expandable=False,
+              is_expanded=False,
+              display_name=label_text,
+              icon=self.icon(icon_name),
+            ))
           else:
-            label_text = '...' + label[-label_max:] if len(label) > label_max else label
-          result.append(TreeEntry(
-            node_id=node_id_dict,
-            indent=child_indent_prefix + branch,
-            is_expandable=False,
-            is_expanded=False,
-            display_name=label_text,
-            icon=self.icon(icon_name),
-          ))
+            label_text = "..." + label[-label_max:] if len(label) > label_max else label
+            result.append(TreeEntry(
+              node_id=node_id_dict,
+              indent=child_indent_prefix + branch,
+              is_expandable=False,
+              is_expanded=False,
+              display_name=label_text,
+              icon=self.icon(icon_name),
+            ))
     return result
 
   def get_visible_entries(self) -> list[TreeEntry]:
@@ -119,17 +167,22 @@ class GitTree(GenericTree):
     status = get_file_status(repo)
     staged_all = [{"path": s["path"], "status": s["status"], "staged": True} for s in status["staged"]]
     unstaged_all = [{"path": s["path"], "status": s["status"], "staged": False} for s in status["unstaged"]]
+    added_list = (
+      [s for s in staged_all if s["status"] == "A"]
+      + [s for s in unstaged_all if s["status"] == "A"]
+    )
     removed_list = (
       [s for s in staged_all if s["status"] == "D"]
       + [s for s in unstaged_all if s["status"] == "D"]
     )
-    staged_list = [s for s in staged_all if s["status"] != "D"]
-    unstaged_list = [s for s in unstaged_all if s["status"] != "D"]
+    staged_list = [s for s in staged_all if s["status"] not in ("D", "A")]
+    unstaged_list = [s for s in unstaged_all if s["status"] not in ("D", "A")]
     untracked_list = [{"path": s["path"], "status": s["status"], "staged": False} for s in status["untracked"]]
     commits = get_recent_commits(repo, 15)
     stashes = get_stashes(repo)
 
     self.staged_paths = {s["path"] for s in staged_list}
+    self.added_paths = {s["path"] for s in added_list}
     self.unstaged_paths = {s["path"] for s in unstaged_list}
     self.removed_paths = {s["path"] for s in removed_list}
     self.untracked_paths = {s["path"] for s in untracked_list}
@@ -156,7 +209,26 @@ class GitTree(GenericTree):
       is_last_category=False,
       item_formatter=lambda s: (
         {"type": "change", "path": s["path"], "staged": True},
-        f"{s['status']} {s['path']}"
+        _git_change_label_rich(s["status"], s["path"]),
+      )
+    ))
+
+    result.extend(self._build_category(
+      cat_id="added",
+      display_name="Added",
+      items=added_list,
+      empty_text="(none)",
+      icon_name="change",
+      is_last_category=False,
+      item_formatter=lambda s: (
+        {
+          "type": "change",
+          "path": s["path"],
+          "staged": s["staged"],
+          "untracked": False,
+          "added": True,
+        },
+        _git_change_label_rich(s["status"], s["path"]),
       )
     ))
 
@@ -169,7 +241,7 @@ class GitTree(GenericTree):
       is_last_category=False,
       item_formatter=lambda s: (
         {"type": "change", "path": s["path"], "staged": False, "untracked": False},
-        f"{s['status']} {s['path']}"
+        _git_change_label_rich(s["status"], s["path"]),
       )
     ))
 
@@ -188,7 +260,7 @@ class GitTree(GenericTree):
           "untracked": False,
           "removed": True,
         },
-        f"{s['status']} {s['path']}"
+        _git_change_label_rich(s["status"], s["path"]),
       )
     ))
 
@@ -201,7 +273,7 @@ class GitTree(GenericTree):
       is_last_category=False,
       item_formatter=lambda s: (
         {"type": "change", "path": s["path"], "staged": False, "untracked": True},
-        f"{s['status']} {s['path']}"
+        _git_change_label_rich(s["status"], s["path"]),
       )
     ))
 
@@ -245,6 +317,14 @@ class GitTree(GenericTree):
       btns.append(ActionButton(icon, action=lambda n=node_id, a=action: self.on_button_action(n, a), tooltip=tooltip, classes="action-btn"))
       return btns
 
+    if node_id == ("cat", "added"):
+      all_selected = bool(self.added_paths) and self.added_paths.issubset(self._selected_for_action)
+      icon = CLEAR_SELECTION if all_selected else SELECT_ALL
+      action = "clear_selection" if all_selected else "select_all_added"
+      tooltip = "Clear selection" if all_selected else "Select all added"
+      btns.append(ActionButton(icon, action=lambda n=node_id, a=action: self.on_button_action(n, a), tooltip=tooltip, classes="action-btn"))
+      return btns
+
     if node_id == ("cat", "changes"):
       all_selected = bool(self.unstaged_paths) and self.unstaged_paths.issubset(self._selected_for_action)
       icon = CLEAR_SELECTION if all_selected else SELECT_ALL
@@ -274,6 +354,7 @@ class GitTree(GenericTree):
       staged = node_id.get("staged", False)
       untracked = node_id.get("untracked", False)
       is_removed = node_id.get("removed", False)
+      is_added = node_id.get("added", False)
       label = CHECKED if path in self._selected_for_action else UNCHECKED
 
       if staged:
@@ -283,9 +364,14 @@ class GitTree(GenericTree):
         if is_removed:
           btns.append(ActionButton(DELETE, action=lambda n=node_id: self.on_button_action(n, "git_rm_removed"), tooltip="git rm (stage deletion)", classes="action-btn"))
 
-      discard_tip = "Restore file from last commit" if is_removed else "Discard changes"
+      if is_removed:
+        discard_tip = "Restore file from last commit"
+      elif is_added:
+        discard_tip = "Unstage new file"
+      else:
+        discard_tip = "Discard changes"
       btns.append(ActionButton(GIT_DISCARD, action=lambda n=node_id: self.on_button_action(n, "discard"), tooltip=discard_tip, classes="action-btn"))
-      if not is_removed:
+      if not is_removed and not is_added:
         btns.append(ActionButton(GIT_IGNORE, action=lambda n=node_id: self.on_button_action(n, "add_to_gitignore"), tooltip="Add to .gitignore", classes="action-btn"))
       btns.append(ActionButton(label, action=lambda n=node_id: self.on_button_action(n, "toggle_select"), tooltip="Toggle for commit/stage/unstage", classes="action-btn"))
       return btns

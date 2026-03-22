@@ -1,0 +1,39 @@
+CommandsHelpModal {
+  align: center middle;
+}
+
+#commands_help_modal_container {
+  width: 70%;
+  max-height: 85%;
+  background: $panel;
+  border: round $primary;
+  padding: 1 2;
+}
+
+#commands_help_modal_title {
+  text-style: bold;
+  margin-bottom: 1;
+}
+
+#commands_help_modal_scroll {
+  height: 1fr;
+  max-height: 24;
+  border: round $primary;
+  padding: 0 1;
+}
+
+#commands_help_modal_body {
+  height: auto;
+}
+
+CommandsHelpModal .modal-button-container {
+  height: 3;
+  width: 100%;
+  align: center middle;
+  margin-top: 1;
+  border: round $primary;
+}
+
+CommandsHelpModal .modal-button {
+  width: 50%;
+}

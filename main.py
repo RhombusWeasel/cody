@@ -37,7 +37,6 @@ from utils.git import ensure_git_repo
 ensure_git_repo(args.working_directory)
 
 from utils.skills import skill_manager
-from utils.skill_components import discover_sidebar_tabs
 from utils.leader_registry import (
   discover_leader_entries,
   register_core_leader_chords,
@@ -45,7 +44,6 @@ from utils.leader_registry import (
 )
 
 skill_manager.discover_skills()
-discover_sidebar_tabs()
 
 _app_dir = os.path.dirname(os.path.abspath(__file__))
 _css_paths = ['app.css'] + fs.discover_css(

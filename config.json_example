@@ -40,10 +40,7 @@
   },
   "commands": {
     "directories": [
-      "$CODY_DIR/components/chat/cmd",
-      "$CODY_DIR/cmd",
-      "~/.agents/commands",
-      "{working_directory}/.agents/commands"
+      "$CODY_DIR/cmd"
     ]
   },
   "db": {

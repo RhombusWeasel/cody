@@ -44,9 +44,10 @@ GitSidebarTab {
   text-align: center;
 }
 
-/* Target the text labels specifically in the Git tree */
+/* Git change rows: status letter colours are Rich styles in git_tree._GIT_STATUS_STYLES. */
 GitTree TreeRow .tree-label {
   width: 1fr;
+  color: $text;
 }
 /* Target the action icon buttons specifically in the Git tree */
 GitTree TreeRow .action-btn {
