@@ -32,7 +32,7 @@ class Agent():
         })
 
     def get_response(self, msg: str, role: str='user'):
-        tools = get_tools()
+        tools = get_tools(['skills', 'system'])
         if msg != "":
             self.add_msg(role, msg)
         _, model, opts = get_provider_config()

@@ -40,7 +40,7 @@ def _load_agent(name: str) -> dict | None:
 
 async def run(agent: dict, task: str) -> str:
   tool_groups = agent['tool_groups']
-  tools = get_tools(tool_groups) if tool_groups else get_tools()
+  tools = get_tools(tool_groups)
 
   if agent.get('provider'):
     cfg.set('session.provider', agent['provider'])

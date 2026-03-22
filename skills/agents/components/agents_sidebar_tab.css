@@ -19,7 +19,7 @@ AgentsSidebarTab {
 }
 
 .agent-btn {
-  width: 1fr;
+  width: 3;
 }
 
 .agent-btn:disabled {
