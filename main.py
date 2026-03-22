@@ -2,13 +2,13 @@ import os
 import asyncio
 from textual import on
 from textual.app import App
-from textual.binding import Binding
 from components.chat.chat import ChatTab, MsgBox
 from components.workspace.workspace import Workspace
 from textual.widgets import Header, Footer, Button, TabbedContent, TabPane
 from components.sidebar.wrapper import Sidebar
 from components.terminal.terminal_sidebar import TerminalSidebar, CustomTerminal
 from components.utils.input_modal import InputModal
+from components.utils.leader_guide_screen import LeaderGuideScreen
 from textual.containers import Horizontal, Vertical
 
 import utils.fs as fs
@@ -38,6 +38,11 @@ ensure_git_repo(args.working_directory)
 
 from utils.skills import skill_manager
 from utils.skill_components import discover_sidebar_tabs
+from utils.leader_registry import (
+  discover_leader_entries,
+  register_core_leader_chords,
+  reset_leader_registry,
+)
 
 skill_manager.discover_skills()
 discover_sidebar_tabs()
@@ -52,10 +57,15 @@ for _skill in skill_manager.skills.values():
   if os.path.isdir(_skill_css_dir):
     _css_paths.extend(fs.discover_css(_skill_css_dir))
 
+reset_leader_registry()
+register_core_leader_chords()
+
 from utils.paths import resolved_tiered_paths
 for tool_path in resolved_tiered_paths('tools', args.working_directory):
   if os.path.exists(tool_path):
     fs.load_folder(tool_path, '.py')
+
+discover_leader_entries()
 
 visibility = {
   'util-sidebar': cfg.get('interface.sidebar_open_on_start'),
@@ -63,27 +73,28 @@ visibility = {
 }
 
 class TuiApp(App):
-  # priority=True so split/pane keys still fire while MessageInput (TextArea) or editors are focused.
-  BINDINGS = [
-    ('ctrl+d', 'toggle_visible("util-sidebar")', 'Toggle Sidebar'),
-    ('ctrl+t', 'toggle_visible("term-sidebar")', 'Toggle Terminal'),
-    Binding('ctrl+w', 'close_active_tab', 'Close Tab', priority=True),
-    Binding('ctrl+shift+p', 'close_active_pane', 'Close Pane', priority=True),
-    Binding('ctrl+n', 'new_chat_tab', 'New Chat Tab', priority=True),
-    Binding('ctrl+v', 'split_vertical', 'Split Vertical', priority=True),
-    Binding('ctrl+h', 'split_horizontal', 'Split Horizontal', priority=True),
-    Binding('ctrl+right', 'focus_next_pane', 'Next Pane', priority=True),
-    Binding('ctrl+left', 'focus_previous_pane', 'Previous Pane', priority=True),
-  ]
+  """Global shortcuts live in the leader menu (Ctrl+Space / Ctrl+@ by default)."""
+  BINDINGS = []
   CSS_PATH = _css_paths
 
   async def on_mount(self):
+    self._bind_leader_keys()
     themes = discover_themes()
     for t in themes.values():
       self.register_theme(t)
     self.theme = cfg.get('interface.theme', 'h4x0я')
     # Start with an initial chat tab
     await self.action_new_chat_tab()
+
+  def _bind_leader_keys(self) -> None:
+    primary = cfg.get('interface.leader_key', 'ctrl+space')
+    self._bindings.bind(primary, 'leader', 'Leader menu', priority=True)
+    if primary == 'ctrl+space':
+      self._bindings.bind('ctrl+@', 'leader', 'Leader menu', priority=True)
+    self.refresh_bindings()
+
+  def action_leader(self) -> None:
+    self.push_screen(LeaderGuideScreen())
 
   def watch_theme(self, theme: str) -> None:
     cfg.set('interface.theme', theme)

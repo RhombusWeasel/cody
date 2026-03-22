@@ -74,12 +74,19 @@ Check out the `examples/` directory for sample code on how to extend Cody:
 
 ## Keybindings
 
-| Key | Action |
-|-----|--------|
-| `Ctrl+S` | Toggle sidebar |
-| `Ctrl+T` | Toggle terminal |
-| `Ctrl+N` | New chat tab |
-| `Ctrl+W` | Close chat tab |
+Open the **leader menu** with `Ctrl+Space` (many terminals send this as `Ctrl+@`; both work by default). Then use single-letter chords; examples:
+
+| Chord | Action |
+|-------|--------|
+| `b` then `u` | Toggle util sidebar |
+| `b` then `t` | Toggle terminal sidebar |
+| `i` | Send terminal buffer to chat |
+| `w` then `v` / `h` | Split workspace vertical / horizontal |
+| `w` then `c` / `n` | Close chat tab / new chat tab |
+| `w` then `p` | Close active pane (when split) |
+| `w` then `l` / `r` | Focus next / previous pane |
+
+Editor tabs still use `Ctrl+S` to save. Override the leader key with `interface.leader_key` in config.
 
 ## Project Structure
 
