@@ -30,6 +30,11 @@ uv run python main.py [working_directory]
 
 Defaults to current directory. Working directory is used for file tree, git, and skills.
 
+## Documentation
+
+- [Utils reference](docs/utils_reference.md) — what each `utils/` module does and when to use it
+- [Extending Cody](docs/extending_cody.md) — skills, tools, commands, themes, tiered paths, and startup order
+
 ## Features
 
 ### Skills
@@ -45,7 +50,7 @@ We only pass 3 tools to the agent by default
 - `run_command` – Execute shell commands
 - `activate_skill` – Load skill instructions
 - `run_skill` – Run skill scripts
-- Custom tools are loaded from `$CODY_DIR/tools/` and `{project}/.agents/tools/` Tools are passed with every call and must contain a valid docstring as they bypass the skills progressive loading system.
+- Custom tools are loaded from tiered `tools/` directories: `$CODY_DIR/tools/`, `~/.agents/tools/`, then `{project}/.agents/tools/` (later overrides earlier). Tools are passed with every call and must contain a valid docstring as they bypass the skills progressive loading system.
 Because of this they are discouraged and users should favour the below skills implementation.
 
 ### Config
@@ -54,22 +59,20 @@ Because of this they are discouraged and users should favour the below skills im
 
 ## Customized Tooling
 
-**tools**, **skills** and **slash commands** use tiered loading: later directories override earlier ones for the same name.
+**tools** and **skills** use tiered loading: later directories override earlier ones for the same name. **Slash commands:** built-in modules live in `$CODY_DIR/cmd/`; each skill can add `cmd/*.py` next to its `SKILL.md` under the same tiered `skills/` trees (`$CODY_DIR/skills/`, `~/.agents/skills/`, `{project}/.agents/skills/`). Later-loaded command dirs override the same command name. Optional extra command dirs: `commands.directories` in config (resolved before skill `cmd/` folders).
 
-| Layer | Skills | Commands |
-|-------|--------|----------|
-| Built-in | `$CODY_DIR/skills/` | `$CODY_DIR/components/chat/cmd/` |
-| Cody-level | — | `$CODY_DIR/cmd/` |
-| User global | `~/.agents/skills/` | `~/.agents/commands/` |
-| Project | `{project}/.agents/skills/` | `{project}/.agents/commands/` |
+| Layer | Skills | Slash commands |
+|-------|--------|----------------|
+| Built-in | `$CODY_DIR/skills/` | `$CODY_DIR/cmd/` + each `$CODY_DIR/skills/<name>/cmd/` |
+| User global | `~/.agents/skills/` | each `~/.agents/skills/<name>/cmd/` |
+| Project | `{project}/.agents/skills/` | each `{project}/.agents/skills/<name>/cmd/` |
 
-Configure paths via `skills.directories` and `commands.directories` in config.
+Configure paths via `skills.directories` and optionally `commands.directories` in config.
 
 ### Examples
 
 Check out the `examples/` directory for sample code on how to extend Cody:
-- `examples/command/` - Custom slash commands
-- `examples/skills/` - Custom skills
+- `examples/skills/` - Custom skills (including slash commands under `<skill>/cmd/`)
 - `examples/component/` - Custom sidebar UI components
 
 ## Keybindings
@@ -94,9 +97,10 @@ Editor tabs still use `Ctrl+S` to save. Override the leader key with `interface.
 cody/
 ├── main.py              # App entry
 ├── app.css              # Styles
+├── cmd/                 # Built-in slash commands (CommandBase)
 ├── components/          # UI (chat, sidebar, terminal, fs, git, db)
 ├── tools/               # Built-in tools (skills, system)
-├── skills/              # Bundled skills (e.g. coding)
+├── skills/              # Bundled skills (e.g. coding); optional skill cmd/ per skill
 ├── utils/               # Agent, config, providers, db, git, etc.
 └── config.json_example  # Config template
 ```

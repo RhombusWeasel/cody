@@ -1,27 +1,29 @@
 from utils.cmd_loader import CommandBase
 
-class ClearCommand(CommandBase):
-    description = "Clears the current chat history"
 
-    async def execute(self, app, args: list[str]):
-        try:
-            from components.chat.chat import MsgBox
-            from textual.widgets import TabbedContent
-            
-            tabs = app.query_one("#chat_tabs", TabbedContent)
-            active_pane_id = tabs.active
-            if not active_pane_id:
-                return
-                
-            pane = tabs.get_pane(active_pane_id)
-            msg_box = pane.query_one(MsgBox)
-            
-            # Clear messages
-            msg_box.messages = []
-            msg_box.actor.msg = []
-            
-            # Save the cleared chat
-            await msg_box.save_chat()
-            
-        except Exception as e:
-            print(f"Clear command failed: {e}")
+class ClearCommand(CommandBase):
+  description = "Clears the current chat history"
+
+  async def execute(self, app, args: list[str]):
+    try:
+      from components.chat.input import MessageInput
+      from components.workspace.workspace import Workspace
+      from utils.agent import Agent
+
+      workspace = app.query_one(Workspace)
+      msg_box = workspace.get_active_msg_box()
+      if not msg_box:
+        return
+
+      new_agent = Agent()
+      msg_box.actor = new_agent
+      msg_box.query_one(MessageInput).actor = new_agent
+
+      show_system = msg_box.config.get("interface.show_system_messages", False)
+      msg_box.messages = (
+        new_agent.msg if show_system else [m for m in new_agent.msg if m.get("role") != "system"]
+      )
+
+      await msg_box.save_chat()
+    except Exception as e:
+      print(f"Clear command failed: {e}")

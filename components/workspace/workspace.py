@@ -203,6 +203,21 @@ class Workspace(Widget):
         except ValueError:
             self.set_active_pane(panes[-1])
 
+    def get_active_msg_box(self):
+        """Return MsgBox for the active pane's active chat tab, or None."""
+        from components.chat.chat import MsgBox
+
+        if not self.active_pane:
+            return None
+        active_tab_id = self.active_pane.tabs.active
+        if not active_tab_id:
+            return None
+        try:
+            tab = self.active_pane.tabs.query_one(f"#{active_tab_id}", TabPane)
+            return tab.query_one(MsgBox)
+        except Exception:
+            return None
+
 
 def register_leader_chords(reg: LeaderRegistrar) -> None:
     """Leader menu: Window — splits, close pane, focus panes (see chat for tab actions)."""

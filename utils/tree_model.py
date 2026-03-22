@@ -1,4 +1,6 @@
 """Tree entry model for generic tree components."""
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Any
 
@@ -13,6 +15,7 @@ class TreeEntry:
   is_expanded: bool
   display_name: str
   icon: str
+  display_rich: Any | None = None
   row_variant: str | None = None
   vault_secret: str = ""
   vault_revealed: bool = False

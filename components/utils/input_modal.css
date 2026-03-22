@@ -21,3 +21,22 @@ InputModal {
 .modal-button {
   width: 50%;
 }
+
+PreviewToChatModal {
+  align: center middle;
+}
+
+#preview_to_chat_container {
+  width: 80%;
+  max-width: 120;
+  height: 70%;
+  min-height: 12;
+  background: $panel;
+  border: round $primary;
+  padding: 0;
+}
+
+#preview_to_chat_container .preview-to-chat-body {
+  height: 1fr;
+  min-height: 8;
+}

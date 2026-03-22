@@ -36,6 +36,54 @@ def parse_frontmatter(content: str) -> tuple[dict, str]:
     body = '\n'.join(lines[body_start_idx:])
     return frontmatter, body
 
+
+def skill_command_directory_paths(working_dir: str) -> list[str]:
+    """
+    Absolute paths to existing skill `cmd/` dirs, in load order (later overrides).
+    Mirrors SkillManager.discover_skills tier roots and per-skill folder rules:
+    only directories with SKILL.md, valid name/description frontmatter, and not
+    disabled via skills.enabled; skill folders sorted by name per tier.
+    """
+    default_dirs = tiered_dir_templates("skills")
+    directories = parse_directory_list(
+        cfg.get('skills.directories', default_dirs),
+        default_dirs,
+    )
+    search_paths = [Path(d) for d in resolve_dir_templates(directories, working_dir)]
+    out: list[str] = []
+
+    for base_path in search_paths:
+        if not base_path.exists() or not base_path.is_dir():
+            continue
+        skill_dirs = sorted(
+            (p for p in base_path.iterdir() if p.is_dir()),
+            key=lambda p: p.name.lower(),
+        )
+        for skill_dir in skill_dirs:
+            skill_file = skill_dir / "SKILL.md"
+            if not skill_file.exists():
+                continue
+            try:
+                with open(skill_file, encoding="utf-8") as f:
+                    content = f.read()
+                frontmatter, _ = parse_frontmatter(content)
+                name = frontmatter.get("name")
+                description = frontmatter.get("description")
+                if not name or not description:
+                    continue
+                enabled_config = cfg.get("skills.enabled", {})
+                if isinstance(enabled_config, dict) and name in enabled_config:
+                    if not enabled_config[name]:
+                        continue
+            except OSError:
+                continue
+            cmd_dir = skill_dir / "cmd"
+            if cmd_dir.is_dir():
+                out.append(str(cmd_dir.resolve()))
+
+    return out
+
+
 class SkillManager:
     def __init__(self):
         self.skills = {}

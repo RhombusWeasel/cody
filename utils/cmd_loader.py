@@ -8,6 +8,7 @@ from utils.paths import (
     parse_directory_list,
     resolve_dir_templates,
 )
+from utils.skills import skill_command_directory_paths
 
 class CommandBase:
     description: str = "Base command"
@@ -37,9 +38,11 @@ def _load_from_dir(commands: dict, d: str) -> None:
 
 def load_commands() -> dict[str, CommandBase]:
     """
-    Load commands from tiered directories. Later directories override earlier for same name.
-    Uses commands.directories from config, or defaults: built-in, $CODY_DIR/cmd, ~/.agents/commands,
-    {working_directory}/.agents/commands.
+    Load commands from configured directories, then from each enabled skill's cmd/
+    folder (same tier order as skill discovery). Later directories override earlier
+    for the same module name.
+    Uses commands.directories from config, or default_command_directory_templates()
+    ($CODY_DIR/cmd only); skill cmd paths are always appended after that list.
     """
     commands = {}
     working_dir = cfg.get('session.working_directory', os.getcwd())
@@ -48,7 +51,9 @@ def load_commands() -> dict[str, CommandBase]:
         cfg.get('commands.directories', default_dirs),
         default_dirs,
     )
-    for d in resolve_dir_templates(directories, working_dir):
+    load_dirs = list(resolve_dir_templates(directories, working_dir))
+    load_dirs.extend(skill_command_directory_paths(working_dir))
+    for d in load_dirs:
         _load_from_dir(commands, d)
 
     return commands
