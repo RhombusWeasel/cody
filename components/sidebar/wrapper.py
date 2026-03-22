@@ -6,7 +6,6 @@ from components.sidebar.tool_list import ToolList
 from components.sidebar.settings import SettingsMenu
 from components.db.db_sidebar_tab import DBSidebarTab
 from components.fs.file_tree import FileTreeTab
-from components.git.git_sidebar_tab import GitSidebarTab
 from components.sidebar.chat_history import ChatHistoryTab
 from components.sidebar.password_vault_tab import PasswordVaultTab
 
@@ -18,7 +17,6 @@ import utils.icons as icons
 TAB_TOOLTIPS = {
   "tab-chats": "Chat History",
   "tab-fs": "File System",
-  "tab-git": "Git",
   "tab-tools": "Skills",
   "tab-db": "DB Connections",
   "tab-vault": "Password vault",
@@ -38,8 +36,6 @@ class Sidebar(VerticalScroll):
                 yield ChatHistoryTab()
             with TabPane(icons.FILE_SYSTEM, id="tab-fs", classes="tabbed-content-label"):
                 yield FileTreeTab()
-            with TabPane(icons.GIT, id="tab-git", classes="tabbed-content-label"):
-                yield GitSidebarTab()
             with TabPane(icons.SKILLS, id="tab-tools", classes="tabbed-content-label"):
                 yield ToolList()
             with TabPane(icons.DB, id="tab-db", classes="tabbed-content-label"):

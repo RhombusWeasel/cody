@@ -1,9 +1,8 @@
 """Read-only modal for viewing git diffs with colored output."""
 from textual.app import ComposeResult
 from textual.containers import Vertical, VerticalScroll
-from textual.widgets import Label, Button, Static
+from textual.widgets import Label, Static
 from textual.screen import ModalScreen
-from textual import on
 from rich.syntax import Syntax
 
 

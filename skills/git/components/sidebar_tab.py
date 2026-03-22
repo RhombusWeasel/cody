@@ -1,4 +1,4 @@
-"""Git viewer sidebar tab."""
+"""Git viewer sidebar tab (skill hook)."""
 import git
 from textual.app import ComposeResult
 from textual.containers import Vertical, Grid, VerticalScroll
@@ -7,14 +7,18 @@ from textual import on
 
 from components.tree import NodeSelected
 from components.utils.input_modal import InputModal
-from components.git.diff_modal import DiffModal
-from components.git.git_tree import GitTree, SelectionChanged, _get_working_dir
+from skills.git.components.diff_modal import DiffModal
+from skills.git.components.git_tree import GitTree, SelectionChanged, _get_working_dir
 from utils.agent import TaskAgent
 from utils.git import stage_all, create_stash, pop_stash
+import utils.icons as icons
 from utils.icons import (
-  GIT, REFRESH, GIT_COMMIT, GIT_ADD, GIT_UNSTAGE, RUN,
+  GIT_COMMIT, GIT_ADD, GIT_UNSTAGE, RUN,
   GIT_STASH, GIT_POP_STASH,
 )
+
+sidebar_label = icons.GIT
+sidebar_tooltip = "Git"
 
 COMMIT_MSG_PROMPT = """You generate conventional git commit messages. Output only the message, no preamble.
 Format: type(scope): subject. Types: feat, fix, docs, style, refactor, test, chore.
@@ -31,7 +35,7 @@ class GitSidebarTab(Vertical):
 
   def compose(self) -> ComposeResult:
     from components.utils.buttons import ActionButton, RefreshButton, RunButton
-    yield Label(f"{GIT} Manager", id="git_tab_title")
+    yield Label(f"{icons.GIT} Manager", id="git_tab_title")
     with Grid(id="git_buttons"):
       yield RefreshButton(action=self.on_refresh, id="btn_git_refresh", tooltip="Refresh", classes="action-btn git-icon-btn")
       yield ActionButton(GIT_COMMIT, action=self.on_commit, id="btn_git_commit", tooltip="AI commit staged", classes="action-btn git-icon-btn")
@@ -100,12 +104,12 @@ class GitSidebarTab(Vertical):
         repo.index.add(list(self.selected_for_action))
       except Exception:
         pass
-    
+
     try:
       diff = repo.git.diff("--cached")
     except git.exc.GitCommandError:
       diff = ""
-      
+
     if not diff:
       self.app.notify("Nothing staged to commit", severity="warning")
       return
@@ -143,7 +147,7 @@ class GitSidebarTab(Vertical):
       except Exception:
         self.app.notify("Stage failed", severity="error")
       return
-    
+
     data = self.selected_node_data
     if data and data.get("type") == "change":
       path = data["path"]
@@ -177,7 +181,7 @@ class GitSidebarTab(Vertical):
       except Exception:
         self.app.notify("Unstage failed", severity="error")
       return
-    
+
     data = self.selected_node_data
     if data and data.get("type") == "change" and data.get("staged"):
       path = data["path"]
@@ -274,3 +278,7 @@ class GitSidebarTab(Vertical):
       self._show_diff(title, diff)
     else:
       self.app.notify("Select a file or commit to view diff", severity="warning")
+
+
+def get_sidebar_widget():
+  return GitSidebarTab()

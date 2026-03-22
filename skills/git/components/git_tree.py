@@ -6,7 +6,7 @@ from rich.text import Text
 from textual.message import Message
 
 from components.tree import GenericTree
-from components.git.git_tree_actions import handle_git_action
+from skills.git.components.git_tree_actions import handle_git_action
 from utils.cfg_man import cfg
 from utils.tree_model import TreeEntry
 from utils.git import get_file_status, get_branches_info, get_recent_commits, get_stashes

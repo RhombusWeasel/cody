@@ -1,0 +1,35 @@
+DiffModal {
+  align: center middle;
+}
+
+#diff_modal_container {
+  width: 50%;
+  height: 90%;
+  background: $panel;
+  border: round $primary;
+  padding: 1;
+  align: center middle;
+}
+
+#diff_modal_header {
+  height: auto;
+  margin-bottom: 1;
+}
+
+#diff_modal_content {
+  height: 95%;
+  overflow: scroll;
+  scrollbar-size: 1 2;
+  padding: 1;
+}
+
+#diff_modal_content Static {
+  width: auto;
+  height: auto;
+  min-width: 100%;
+}
+
+#btn_diff_close {
+  width: 50%;
+  align: center middle;
+}
