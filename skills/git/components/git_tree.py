@@ -12,7 +12,7 @@ from utils.tree_model import TreeEntry
 from utils.git import get_file_status, get_branches_info, get_recent_commits, get_stashes
 from utils.icons import (
   GIT_ICON_SET, CHECKED, UNCHECKED, SELECT_ALL, CLEAR_SELECTION,
-  GIT_DISCARD, GIT_IGNORE, GIT_CHERRY_PICK, GIT_BRANCH, RUN, DELETE,
+  GIT_DISCARD, GIT_IGNORE, GIT_CHERRY_PICK, GIT_BRANCH, RUN,
   GIT_ADD, GIT_UNSTAGE, GIT_MERGE, GIT_REVERT, EDIT,
 )
 
@@ -359,10 +359,10 @@ class GitTree(GenericTree):
 
       if staged:
         btns.append(ActionButton(GIT_UNSTAGE, action=lambda n=node_id: self.on_button_action(n, "unstage_file"), tooltip="Unstage file", classes="action-btn"))
+      elif is_removed:
+        btns.append(ActionButton(GIT_ADD, action=lambda n=node_id: self.on_button_action(n, "git_rm_removed"), tooltip="Stage Deletion", classes="action-btn"))
       else:
         btns.append(ActionButton(GIT_ADD, action=lambda n=node_id: self.on_button_action(n, "stage_file"), tooltip="Stage file", classes="action-btn"))
-        if is_removed:
-          btns.append(ActionButton(DELETE, action=lambda n=node_id: self.on_button_action(n, "git_rm_removed"), tooltip="git rm (stage deletion)", classes="action-btn"))
 
       if is_removed:
         discard_tip = "Restore file from last commit"
