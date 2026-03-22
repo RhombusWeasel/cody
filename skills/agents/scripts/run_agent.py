@@ -64,7 +64,12 @@ def main():
   cfg.set('session.working_directory', working_dir)
 
   from utils.paths import resolved_tiered_paths
+  from utils.skills import skill_tools_directory_paths
+
   for tool_path in resolved_tiered_paths('tools', working_dir):
+    if os.path.exists(tool_path):
+      fs.load_folder(tool_path, '.py')
+  for tool_path in skill_tools_directory_paths(working_dir):
     if os.path.exists(tool_path):
       fs.load_folder(tool_path, '.py')
 

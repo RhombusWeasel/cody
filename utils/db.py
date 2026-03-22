@@ -1,5 +1,6 @@
 import sqlite3
 import asyncio
+import json
 import os
 import shutil
 from utils.cfg_man import cfg
@@ -77,6 +78,43 @@ class DatabaseManager:
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        self._seed_bundled_agents(cursor)
+
+    def _seed_bundled_agents(self, cursor):
+        from utils.paths import bundled_agent_definitions_dir
+
+        bund = bundled_agent_definitions_dir()
+        if not os.path.isdir(bund):
+            return
+        for entry in sorted(os.listdir(bund)):
+            if not entry.endswith(".json"):
+                continue
+            path = os.path.join(bund, entry)
+            try:
+                with open(path, encoding="utf-8") as f:
+                    data = json.load(f)
+            except (OSError, json.JSONDecodeError):
+                continue
+            name = data.get("name")
+            if not name:
+                continue
+            cursor.execute("SELECT 1 FROM agents WHERE name = ?", (name,))
+            if cursor.fetchone():
+                continue
+            agent_id = data.get("id") or name
+            desc = data.get("description") or ""
+            prompt = data.get("system_prompt") or ""
+            groups = data.get("tool_groups") or []
+            tool_groups = json.dumps(groups)
+            provider = data.get("provider") or ""
+            model = data.get("model") or ""
+            cursor.execute(
+                """
+                INSERT INTO agents (id, name, description, system_prompt, tool_groups, provider, model, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                """,
+                (agent_id, name, desc, prompt, tool_groups, provider, model),
+            )
 
     def load_connections(self):
         saved_connections = cfg.get("db.connections", [])

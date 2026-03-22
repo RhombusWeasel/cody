@@ -6,7 +6,7 @@ For how to extend Cody (skills, tools, commands, themes), see [extending_cody.md
 
 ## Read this first
 
-- **[`paths.py`](#pathspy)** — Resolves `$CODY_DIR`, `~/.agents`, and `{working_directory}/.agents` for any tiered resource.
+- **[`paths.py`](#pathspy)** — Resolves `$CODY_DIR`, `~/.agents`, and `{working_directory}/.agents` for any tiered resource; includes `bundled_agent_definitions_dir()` for shipped sub-agent JSON.
 - **[`cfg_man.py`](#cfg_manpy)** — Merged JSON config; dotted keys (`interface.theme`).
 - **[`skills.py`](#skillspy)** — Skill discovery from `SKILL.md`; feeds the agent catalog and optional skill UI hooks.
 
@@ -54,9 +54,9 @@ For how to extend Cody (skills, tools, commands, themes), see [extending_cody.md
 
 **Use when:** Persisting or querying chat/history/agent records from UI or tools.
 
-**Primary API:** `DatabaseManager` (`get_project_db_path`, `add_connection`, async helpers as used by components), module `db_manager`.
+**Primary API:** `DatabaseManager` (`get_project_db_path`, `add_connection`, async helpers as used by components), module `db_manager`. On init, `_seed_bundled_agents` inserts agents from JSON in [`bundled_agent_definitions_dir()`](#pathspy) when the agent `name` is missing.
 
-**Depends on:** `utils.cfg_man`; `get_cody_dir` from `utils.paths` internally.
+**Depends on:** `utils.cfg_man`; `utils.paths` (`get_cody_dir`, `bundled_agent_definitions_dir`).
 
 ---
 
@@ -76,7 +76,7 @@ For how to extend Cody (skills, tools, commands, themes), see [extending_cody.md
 
 **Purpose:** Small JSON helpers, recursive CSS discovery, and dynamic import of all `.py` files under a directory (used for tools).
 
-**Use when:** Loading JSON assets, collecting CSS paths, or mirroring how `main.py` loads the `tools/` folders.
+**Use when:** Loading JSON assets, collecting CSS paths, or mirroring how `main.py` loads tiered `tools/` and each skill’s `tools/` root.
 
 **Primary API:** `save_data`, `load_data`, `discover_css`, `load_folder`.
 
@@ -140,7 +140,7 @@ For how to extend Cody (skills, tools, commands, themes), see [extending_cody.md
 
 **Use when:** Resolving where user or project content lives, or building config defaults for new tiered features.
 
-**Primary API:** `get_cody_dir`, `get_global_agents_dir`, `tiered_dir_templates`, `resolve_dir_templates`, `resolved_tiered_paths`, `get_tiered_paths`, `parse_directory_list`, `default_command_directory_templates`, `resolved_theme_paths`.
+**Primary API:** `get_cody_dir`, `get_global_agents_dir`, `bundled_agent_definitions_dir`, `tiered_dir_templates`, `resolve_dir_templates`, `resolved_tiered_paths`, `get_tiered_paths`, `parse_directory_list`, `default_command_directory_templates`, `resolved_theme_paths`.
 
 **Depends on:** stdlib only.
 
@@ -164,7 +164,7 @@ For how to extend Cody (skills, tools, commands, themes), see [extending_cody.md
 
 **Use when:** Anything involving skill listing, body text, paths, or disabling a skill by name.
 
-**Primary API:** `parse_frontmatter`, `skill_command_directory_paths`, `SkillManager` (`discover_skills`, `get_catalog_xml`, `get_skill`), `skill_manager`.
+**Primary API:** `parse_frontmatter`, `skill_command_directory_paths`, `skill_tools_directory_paths`, `SkillManager` (`discover_skills`, `get_catalog_xml`, `get_skill`), `skill_manager`.
 
 **Depends on:** `utils.cfg_man`, `utils.paths`.
 

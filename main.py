@@ -3,7 +3,7 @@ import asyncio
 from textual import on
 from textual.app import App
 from components.chat.chat import ChatTab, MsgBox
-from components.workspace.workspace import Workspace
+from components.workspace.workspace import Workspace, pane_containing
 from textual.widgets import Header, Footer, Button, TabbedContent, TabPane
 from components.sidebar.wrapper import Sidebar
 from components.terminal.terminal_sidebar import TerminalSidebar, CustomTerminal
@@ -59,7 +59,12 @@ reset_leader_registry()
 register_core_leader_chords()
 
 from utils.paths import resolved_tiered_paths
+from utils.skills import skill_tools_directory_paths
+
 for tool_path in resolved_tiered_paths('tools', args.working_directory):
+  if os.path.exists(tool_path):
+    fs.load_folder(tool_path, '.py')
+for tool_path in skill_tools_directory_paths(args.working_directory):
   if os.path.exists(tool_path):
     fs.load_folder(tool_path, '.py')
 
@@ -126,7 +131,9 @@ class TuiApp(App):
         for tab in workspace.query(ChatTab):
             if tab.chat_id == event.chat_id:
                 # Focus this tab's pane and set it active
-                pane = tab.parent.parent # TabPane -> TabbedContent -> Pane
+                pane = pane_containing(tab)
+                if pane is None:
+                    return
                 workspace.set_active_pane(pane)
                 pane.tabs.active = tab.id
                 return

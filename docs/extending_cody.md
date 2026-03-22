@@ -23,6 +23,7 @@ Later directories **override** earlier ones for the same **file/module name** wh
 |----------|----------------------------------|
 | **Skills** | `$CODY_DIR/skills/` → `~/.agents/skills/` → `{project}/.agents/skills/` |
 | **Tools** | `$CODY_DIR/tools/` → `~/.agents/tools/` → `{project}/.agents/tools/` |
+| **Skill tools** | Each enabled skill’s `<skill-dir>/tools/` in the **same** skills tier order as `cmd/` (folders sorted by name per tier). Loaded right after tiered `tools/` via [`skill_tools_directory_paths`](../utils/skills.py). |
 | **Slash commands** | `$CODY_DIR/cmd/`, then each enabled skill’s `<skill-dir>/cmd/` in **skills tier order** (`$CODY_DIR/skills/` → `~/.agents/skills/` → `{project}/.agents/skills/`), folders sorted by name within each tier (later wins for same module name). Optional extra dirs via `commands.directories` (resolved **before** skill `cmd/` dirs). |
 | **Themes** | `$CODY_DIR/themes/` → `~/.agents/cody_themes/` (legacy) → `~/.agents/themes/` → `{project}/.agents/themes/` |
 
@@ -30,6 +31,8 @@ Override search lists in JSON config:
 
 - `skills.directories` — list of templates (see [`utils/paths.py`](../utils/paths.py) `tiered_dir_templates` / `resolve_dir_templates`).
 - `commands.directories` — optional list of extra command dirs (templates); default is `["$CODY_DIR/cmd"]` from [`utils/paths.py`](../utils/paths.py) `default_command_directory_templates()`. [`utils/cmd_loader.py`](../utils/cmd_loader.py) `load_commands()` always appends discovered [`skill_command_directory_paths`](../utils/skills.py) after that list.
+
+**Bundled sub-agents:** JSON files under `$CODY_DIR/skills/agents/bundled/` (path from [`bundled_agent_definitions_dir()`](../utils/paths.py)) are seeded into the `agents` table on init when no row exists with the same `name`. Use this to ship example sub-agents with the repo.
 
 **Slash commands migration:** If you used flat `~/.agents/commands/` or `{project}/.agents/commands/`, move each `CommandBase` module into a skill folder as `<skills-tier>/<skill-name>/cmd/*.py` (with a valid `SKILL.md` beside it), or add your old path explicitly to `commands.directories`.
 
@@ -46,7 +49,7 @@ flowchart TD
   E --> F[Collect CSS: app + components + skill components]
   F --> G[reset_leader_registry]
   G --> H[register_core_leader_chords]
-  H --> I[load_folder each tiered tools path]
+  H --> I[load_folder tiered tools then skill tools/ roots]
   I --> J[discover_leader_entries]
   J --> K[App mount: themes register and UI runs]
 ```
@@ -63,6 +66,7 @@ flowchart TD
 | Skill leader menu | `<skill-dir>/components/leader_menu.py` | `def register_leader(reg):` using `reg.add_submenu` / `reg.add_action` | [`utils/leader_registry.py`](../utils/leader_registry.py) `discover_leader_entries` | Same `scripts/` path behavior as sidebar. |
 | Skill CSS | `<skill-dir>/components/**/*.css` | Valid Textual CSS | [`main.py`](../main.py) merges paths after scanning `components/` | Walks only `components/` under the skill. |
 | Agent tool | Tiered `tools/**/*.py` | At import: `register_tool("name", fn, tags=[...])`; callable needs usable docstring for OpenAI schema | [`utils/fs.py`](../utils/fs.py) `load_folder` from [`main.py`](../main.py) | Passed to the model when enabled; favor skills for heavy guidance. |
+| Skill tool | `<skill-dir>/tools/**/*.py` | Same contract as tiered tools; `register_tool` at import | [`utils/fs.py`](../utils/fs.py) `load_folder` on each path from [`skill_tools_directory_paths`](../utils/skills.py) in [`main.py`](../main.py) (and [`skills/agents/scripts/run_agent.py`](../skills/agents/scripts/run_agent.py)) | Keeps tools next to the skill; respects `skills.enabled`. |
 | Slash command | `$CODY_DIR/cmd/` + optional `<skill-dir>/cmd/` (see tier table); optional extra dirs via `commands.directories` | One subclass of `CommandBase` per module (`async def execute(self, app, args)`) | [`utils/cmd_loader.py`](../utils/cmd_loader.py) `load_commands` | Module filename → command name (first `CommandBase` wins in file). |
 | Theme | Tiered `themes/*.py` | Module attribute `theme` (Textual theme object with `.name`) | [`utils/theme_man.py`](../utils/theme_man.py) `discover_themes` | Theme dirs from `resolved_theme_paths()` in [`utils/paths.py`](../utils/paths.py). |
 

@@ -84,6 +84,51 @@ def skill_command_directory_paths(working_dir: str) -> list[str]:
     return out
 
 
+def skill_tools_directory_paths(working_dir: str) -> list[str]:
+    """
+    Absolute paths to existing skill `tools/` dirs (roots for fs.load_folder), in load order.
+    Same tier / SKILL.md / skills.enabled rules as skill_command_directory_paths.
+    """
+    default_dirs = tiered_dir_templates("skills")
+    directories = parse_directory_list(
+        cfg.get('skills.directories', default_dirs),
+        default_dirs,
+    )
+    search_paths = [Path(d) for d in resolve_dir_templates(directories, working_dir)]
+    out: list[str] = []
+
+    for base_path in search_paths:
+        if not base_path.exists() or not base_path.is_dir():
+            continue
+        skill_dirs = sorted(
+            (p for p in base_path.iterdir() if p.is_dir()),
+            key=lambda p: p.name.lower(),
+        )
+        for skill_dir in skill_dirs:
+            skill_file = skill_dir / "SKILL.md"
+            if not skill_file.exists():
+                continue
+            try:
+                with open(skill_file, encoding="utf-8") as f:
+                    content = f.read()
+                frontmatter, _ = parse_frontmatter(content)
+                name = frontmatter.get("name")
+                description = frontmatter.get("description")
+                if not name or not description:
+                    continue
+                enabled_config = cfg.get("skills.enabled", {})
+                if isinstance(enabled_config, dict) and name in enabled_config:
+                    if not enabled_config[name]:
+                        continue
+            except OSError:
+                continue
+            tools_dir = skill_dir / "tools"
+            if tools_dir.is_dir():
+                out.append(str(tools_dir.resolve()))
+
+    return out
+
+
 class SkillManager:
     def __init__(self):
         self.skills = {}

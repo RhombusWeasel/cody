@@ -1,0 +1,74 @@
+TabContainer {
+  height: 1fr;
+  min-height: 0;
+  width: 1fr;
+}
+
+TabContainer > Vertical {
+  height: 1fr;
+  min-height: 0;
+  width: 1fr;
+}
+
+.tab-container-title-row {
+  height: auto;
+  width: 1fr;
+  min-width: 0;
+}
+
+TabHeader {
+  layout: horizontal;
+  width: 1fr;
+  min-width: 0;
+  height: auto;
+  /* Avoid tab chips drawing over each other when the strip is tight */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-size: 1 1;
+}
+
+.tab-title {
+  layout: horizontal;
+  height: auto;
+  width: auto;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  background: $surface;
+  border: none;
+  margin: 0 1 0 0;
+  padding: 0 1;
+}
+
+.tab-title.-active {
+  background: $panel;
+  border: none;
+}
+
+.tab-title-label {
+  width: auto;
+  min-width: 0;
+  max-width: 40;
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+  margin: 0 1 0 0;
+}
+
+/* Override Button defaults (min-width: 16) so the chip layout stays stable */
+.tab-title Button.tab-title-close {
+  min-width: 3;
+  width: 3;
+  max-width: 3;
+  height: auto;
+  min-height: 1;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  text-align: center;
+  content-align: center middle;
+}
+
+.tab-title Button.tab-title-close:hover {
+  background: $primary-darken-2;
+}

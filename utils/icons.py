@@ -47,7 +47,6 @@ GIT = ""
 DB = ""
 VAULT = "󰌆"
 SKILLS = ""
-# AGENTS = "󱙺"
 SETTINGS = ""
 
 # Selection
@@ -57,7 +56,7 @@ SELECT_ALL = "󰄸"
 CLEAR_SELECTION = "󰄷"
 
 # Actions
-DELETE = "󰛌"
+DELETE = ""
 EDIT = ""
 NEW_FILE = ""
 NEW_FOLDER = ""
