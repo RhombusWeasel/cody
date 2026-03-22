@@ -100,12 +100,13 @@ class Message(Widget):
       if self.role == "user" and self.git_checkpoint:
         short_hash = self.git_checkpoint[:7] if len(self.git_checkpoint) >= 7 else self.git_checkpoint
         yield ActionButton(f"Revert to here ({short_hash})", action=self.on_revert_pressed, id="revert_btn", variant="warning", classes="action-btn revert-btn")
+      pending_loading = False
       for block in self.blocks:
         if block['type'] == 'text':
-          if block.get('loading'):
-            yield LoadingIndicator()
           if block.get('content'):
             yield from _render_text_block(block['content'])
+          if block.get('loading'):
+            pending_loading = True
         elif block['type'] == 'tool':
           parsed = _parse_tool_block(block['content'])
           if parsed is None:
@@ -133,6 +134,8 @@ class Message(Widget):
               md = Markdown(content)
               md.code_indent_guides = False
               yield md
+      if pending_loading:
+        yield LoadingIndicator()
 
   def on_revert_pressed(self) -> None:
     if not self.git_checkpoint:

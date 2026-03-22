@@ -125,11 +125,14 @@ def discover_leader_entries() -> None:
     leader_path = base_dir / "components" / "leader_menu.py"
     if not leader_path.exists():
       continue
-    inserted_path = None
-    skill_scripts = base_dir / "scripts"
-    if skill_scripts.exists():
-      inserted_path = str(skill_scripts)
-      sys.path.insert(0, inserted_path)
+    inserted_paths: list[str] = []
+    for sub in ("components", "scripts"):
+      p = base_dir / sub
+      if p.exists():
+        s = str(p)
+        if s not in sys.path:
+          sys.path.append(s)
+          inserted_paths.append(s)
     try:
       mod_name = f"skill_leader_{name.replace('-', '_')}"
       spec = importlib.util.spec_from_file_location(mod_name, leader_path)
@@ -143,5 +146,6 @@ def discover_leader_entries() -> None:
     except Exception as e:
       print(f"Error loading leader menu for skill {name}: {e}")
     finally:
-      if inserted_path and inserted_path in sys.path:
-        sys.path.remove(inserted_path)
+      for s in inserted_paths:
+        if s in sys.path:
+          sys.path.remove(s)

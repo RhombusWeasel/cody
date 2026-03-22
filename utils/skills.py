@@ -2,8 +2,15 @@ import os
 import re
 import json
 from pathlib import Path
-from utils.cfg_man import cfg, deep_update
+from utils.cfg_man import cfg, deep_update, register_default_config
 from utils.paths import parse_directory_list, resolve_dir_templates, tiered_dir_templates
+
+register_default_config({
+  "skills": {
+    "directories": tiered_dir_templates("skills"),
+    "enabled": {},
+  },
+})
 
 def parse_frontmatter(content: str) -> tuple[dict, str]:
     """

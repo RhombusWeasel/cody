@@ -4,6 +4,35 @@ import os
 from pathlib import Path
 from utils.tool import register_tool
 from utils.skills import skill_manager
+from utils.cfg_man import cfg
+from utils.paths import get_cody_dir
+
+# Same id as skills/memory/components/memory_vault.MEMORY_VAULT_CREDENTIAL_ID
+_MEMORY_VAULT_CREDENTIAL_ID = "cody_skill_memory_password"
+
+
+def _inject_memory_credentials_from_unlocked_vault(env: dict) -> None:
+  """Copy Reverie login from the unlocked vault into env for skill subprocesses (no shared unlock state)."""
+  try:
+    import utils.password_vault as password_vault
+  except Exception:
+    return
+  if not password_vault.is_unlocked():
+    return
+  row = password_vault.get_credential_by_id(_MEMORY_VAULT_CREDENTIAL_ID)
+  cfg_u = (cfg.get("memory.username") or "").strip()
+  cfg_p = (cfg.get("memory.password") or "").strip()
+  vault_u, vault_p = "", ""
+  if row:
+    vault_u = (row.get("username") or "").strip()
+    vault_p = (password_vault.decrypt_password(row) or "").strip()
+  out_u = vault_u or cfg_u
+  out_p = vault_p or cfg_p
+  if out_u:
+    env["CODY_MEMORY_USERNAME"] = out_u
+  if out_p:
+    env["CODY_MEMORY_PASSWORD"] = out_p
+
 
 def run_skill(skill_name: str, script_name: str, args: str = "", cwd: str = None):
     """
@@ -45,11 +74,26 @@ def run_skill(skill_name: str, script_name: str, args: str = "", cwd: str = None
         # Fallback to just executing it directly
         command = f'"{script_path}" {args}'
 
+    run_cwd = cwd or cfg.get("session.working_directory") or os.getcwd()
+    env = os.environ.copy()
+    cody_root = str(get_cody_dir())
+    prev_py = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = f"{cody_root}{os.pathsep}{prev_py}" if prev_py else cody_root
+    wd = cfg.get("session.working_directory")
+    if wd:
+        env["CODY_WORKING_DIRECTORY"] = wd
+
+    if skill_name == "memory":
+        _inject_memory_credentials_from_unlocked_vault(env)
+
     try:
+        # Do not inherit stdin: a TTY makes memory skill bootstrap call getpass and block forever.
         result = subprocess.run(
             command,
             shell=True,
-            cwd=cwd,
+            cwd=run_cwd,
+            env=env,
+            stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True
         )

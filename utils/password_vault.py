@@ -16,6 +16,7 @@ VAULT_VERSION = 1
 KDF_ITERATIONS = 480_000
 SESSION_KEY: bytes | None = None
 _DATA: dict[str, Any] | None = None
+_vault_session_clear_hooks: list[Callable[[], None]] = []
 
 
 def vault_path() -> Path:
@@ -30,6 +31,12 @@ def is_unlocked() -> bool:
   return SESSION_KEY is not None and _DATA is not None
 
 
+def register_vault_session_clear_hook(fn: Callable[[], None]) -> None:
+  """Extensions (e.g. bundled skills) run ``fn`` when the vault session is cleared (lock)."""
+  if fn not in _vault_session_clear_hooks:
+    _vault_session_clear_hooks.append(fn)
+
+
 def clear_session_key() -> None:
   global SESSION_KEY, _DATA
   SESSION_KEY = None
@@ -39,6 +46,11 @@ def clear_session_key() -> None:
     clear_openai_api_key_cache()
   except ImportError:
     pass
+  for hook in _vault_session_clear_hooks:
+    try:
+      hook()
+    except Exception:
+      pass
 
 
 def _derive_fernet_key(password: str, salt: bytes) -> bytes:

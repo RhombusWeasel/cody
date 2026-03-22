@@ -110,6 +110,36 @@ class MsgBox(Widget):
   def on_mount(self) -> None:
     self.watch_messages(self.messages)
 
+  def _sync_messages_from_actor(
+    self,
+    len_before: int,
+    placeholder_id: str,
+    base_messages: list,
+    *,
+    pending_loading: bool,
+  ) -> None:
+    """Rebuild this turn from actor.msg. base_messages is history + user only (no placeholder)."""
+    show_system = self.config.get("interface.show_system_messages", False)
+    displayable = (
+      self.actor.msg if show_system else [m for m in self.actor.msg if m.get("role") != "system"]
+    )
+    len_before_displayable = len(
+      [m for m in self.actor.msg[:len_before] if show_system or m.get("role") != "system"]
+    )
+    tail = displayable[len_before_displayable:]
+    new_to_show = [dict(m) for m in tail[1:]]
+    out = [dict(m) for m in base_messages] + new_to_show
+    if pending_loading:
+      out = out + [
+        {
+          "id": placeholder_id,
+          "role": "assistant",
+          "content": "Thinking…",
+          "loading": True,
+        }
+      ]
+    self.messages = out
+
   async def _abort_agent_response_openai(
     self,
     user_text: str,
@@ -128,15 +158,8 @@ class MsgBox(Widget):
         "or set providers.openai.api_key in settings."
       ),
     })
-    pre = [m for m in self.messages if m.get("id") != placeholder_id]
-    show_system = self.config.get("interface.show_system_messages", False)
-    displayable = self.actor.msg if show_system else [m for m in self.actor.msg if m.get("role") != "system"]
-    len_before_displayable = len(
-      [m for m in self.actor.msg[:len_before] if show_system or m.get("role") != "system"]
-    )
-    new_from_agent = displayable[len_before_displayable:]
-    new_to_show = [dict(m) for m in new_from_agent[1:]]
-    self.messages = pre + new_to_show
+    base_messages = [dict(m) for m in self.messages if m.get("id") != placeholder_id]
+    self._sync_messages_from_actor(len_before, placeholder_id, base_messages, pending_loading=False)
     await self.save_chat()
     self._refresh_chat_history()
 
@@ -155,6 +178,7 @@ class MsgBox(Widget):
     if git_checkpoint:
       user_msg["git_checkpoint"] = git_checkpoint
     self.actor.msg.append(user_msg)
+    base_messages = [dict(m) for m in self.messages if m.get("id") != placeholder_id]
 
     while True:
       try:
@@ -175,6 +199,7 @@ class MsgBox(Widget):
         raise
       if not resp.message.tool_calls:
         break
+      self._sync_messages_from_actor(len_before, placeholder_id, base_messages, pending_loading=True)
       for tc in resp.message.tool_calls:
         args = tc.function.arguments or {}
         if isinstance(args, str):
@@ -207,13 +232,9 @@ class MsgBox(Widget):
           "result": result,
         })
         self.actor.add_msg("tool", tool_data, tool_call_id=getattr(tc, "id", None) or "")
-    pre = [m for m in self.messages if m.get("id") != placeholder_id]
-    show_system = self.config.get("interface.show_system_messages", False)
-    displayable = self.actor.msg if show_system else [m for m in self.actor.msg if m.get("role") != "system"]
-    len_before_displayable = len([m for m in self.actor.msg[:len_before] if show_system or m.get("role") != "system"])
-    new_from_agent = displayable[len_before_displayable:]
-    new_to_show = [dict(m) for m in new_from_agent[1:]]
-    self.messages = pre + new_to_show
+        self._sync_messages_from_actor(len_before, placeholder_id, base_messages, pending_loading=True)
+
+    self._sync_messages_from_actor(len_before, placeholder_id, base_messages, pending_loading=False)
 
     await self.save_chat()
     self._refresh_chat_history()

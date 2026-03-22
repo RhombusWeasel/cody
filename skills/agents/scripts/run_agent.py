@@ -11,8 +11,16 @@ if project_root not in sys.path:
   sys.path.insert(0, project_root)
 
 import utils.fs as fs
-from utils.db import db_manager
 from utils.cfg_man import cfg
+
+import utils.providers  # noqa: F401
+import utils.agent  # noqa: F401
+import utils.skills  # noqa: F401
+import utils.cmd_loader  # noqa: F401
+import utils.db  # noqa: F401
+import utils.interface_defaults  # noqa: F401
+
+from utils.db import db_manager
 from utils.tool import get_tools
 from utils.agent import TaskAgent
 
@@ -40,7 +48,7 @@ def _load_agent(name: str) -> dict | None:
 
 async def run(agent: dict, task: str) -> str:
   tool_groups = agent['tool_groups']
-  tools = get_tools(tool_groups) if tool_groups else get_tools()
+  tools = get_tools(tool_groups)
 
   if agent.get('provider'):
     cfg.set('session.provider', agent['provider'])
@@ -61,6 +69,7 @@ def main():
 
   working_dir = args.working_directory or os.getcwd()
   cfg.load_project_config(working_dir)
+  cfg.apply_registered_defaults()
   cfg.set('session.working_directory', working_dir)
 
   from utils.paths import resolved_tiered_paths

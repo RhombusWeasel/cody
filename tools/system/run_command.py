@@ -13,10 +13,12 @@ def run_command(command: str, cwd: str = None):
         A JSON string containing the tool call details and the command output (stdout and stderr).
     """
     try:
+        # Avoid inheriting a TTY on stdin (would block on hidden prompts, e.g. skill vault getpass).
         result = subprocess.run(
             command,
             shell=True,
             cwd=cwd,
+            stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True
         )

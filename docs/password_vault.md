@@ -8,7 +8,7 @@ How to register, read, and update secrets using [`utils/password_vault.py`](../u
 
 - **`is_unlocked()`** — session has the derived key and decrypted metadata in memory; all read/write helpers below require this (otherwise `list_*` returns `[]`, `upsert_*` / `delete_*` raise `RuntimeError("Vault is locked")`).
 - **`is_file_present()`** — vault file exists (first successful unlock may create it).
-- **`clear_session_key()`** — drop the in-memory vault session (and, in core today, clear related caches such as the OpenAI key cache). Call when implementing “lock vault” in the UI.
+- **`clear_session_key()`** — drop the in-memory vault session (and, in core today, clear related caches such as the OpenAI key cache). Call when implementing “lock vault” in the UI. Extensions can register extra clears with **`register_vault_session_clear_hook(fn)`** (no-arg callable; errors swallowed per hook).
 
 ## 1. Unlock the vault
 
@@ -56,6 +56,10 @@ If the consumer runs under **`asyncio.to_thread`** or otherwise has no `app`, yo
 - Fixed credential id and TUI preflight: [`openai_vault.py`](../utils/providers/openai_vault.py). Provider read path: [`openai.py`](../utils/providers/openai.py) (cache, then non-placeholder `providers.openai.api_key`, then env via `OpenAI()`).
 - **`looks_like_placeholder_openai_api_key`** — template strings in config (e.g. containing `nice-try-byok`) are not treated as real keys so the vault flow still runs.
 - **CLI `TaskAgent` / `run_agent.py`** — no `app`; vault modals are not available; use config / environment.
+
+## Reference: Memory (Reverie) skill
+
+- Credential id **`cody_skill_memory_password`** (label “Memory service”): username + password for **POST /login** on the Reverie-style memory API. With the vault unlocked in the app, that row is used when present; otherwise use `memory.username` / `memory.password` in config or **`CODY_MEMORY_PASSWORD`** (and **`CODY_MEMORY_USERNAME`** if you inject username via env). Skill scripts invoked via **`run_skill`** run in a **subprocess** (§Process and threading) without an in-process vault session. When the vault is **unlocked in the Cody process**, **`run_skill`** copies this row into **`CODY_MEMORY_USERNAME`** / **`CODY_MEMORY_PASSWORD`** in the child environment so memory scripts work from chat without **`CODY_VAULT_MASTER_PASSWORD`**. Otherwise they call **`try_unlock_vault_for_subprocess()`** (from [`skills/memory/components/memory_vault.py`](../skills/memory/components/memory_vault.py)) after loading config so the vault file can be opened when **`CODY_VAULT_MASTER_PASSWORD`** is set (same sensitivity as putting secrets in the environment—avoid on shared machines), or when stdin is a TTY and the user is prompted for the master password. If the vault file is absent or unlock is skipped, config / env still apply.
 
 ## Vault sidebar
 

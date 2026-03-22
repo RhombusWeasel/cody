@@ -3,7 +3,9 @@ import asyncio
 import json
 import os
 import shutil
-from utils.cfg_man import cfg
+from utils.cfg_man import cfg, register_default_config
+
+register_default_config({"db": {"connections": []}})
 
 class DatabaseManager:
     def __init__(self):
@@ -317,4 +319,18 @@ class DatabaseManager:
         query = 'DELETE FROM agents WHERE id = ?'
         await self.execute(db_path, query, (str(agent_id),))
 
-db_manager = DatabaseManager()
+_db_manager_instance = None
+
+def _get_db_manager():
+    global _db_manager_instance
+    if _db_manager_instance is None:
+        _db_manager_instance = DatabaseManager()
+    return _db_manager_instance
+
+class _DbManagerProxy:
+    __slots__ = ()
+
+    def __getattr__(self, name):
+        return getattr(_get_db_manager(), name)
+
+db_manager = _DbManagerProxy()
