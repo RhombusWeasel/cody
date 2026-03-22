@@ -15,6 +15,8 @@ from components.chat.input import MessageInput
 from components.chat.message import Message
 from components.utils.input_modal import InputModal
 
+_MSG_INPUT_FOCUS_DELAY_SEC = 0.05
+
 
 def _group_assistant_tool_messages(msgs: list, show_tool: bool = True) -> list:
   """Group assistant + tool messages until we hit an assistant with no tool_calls."""
@@ -109,6 +111,15 @@ class MsgBox(Widget):
 
   def on_mount(self) -> None:
     self.watch_messages(self.messages)
+    self.set_timer(_MSG_INPUT_FOCUS_DELAY_SEC, self._focus_message_input)
+
+  def _focus_message_input(self) -> None:
+    try:
+      inp = self.query_one(MessageInput)
+    except Exception:
+      return
+    if inp.is_mounted:
+      inp.focus()
 
   def _sync_messages_from_actor(
     self,
