@@ -124,9 +124,9 @@ For how to extend Cody (skills, tools, commands, themes), see [extending_cody.md
 
 **Purpose:** Encrypted credential/note store at `~/.agents/cody_passwords_db.enc` (Fernet + PBKDF2), session unlock state.
 
-**Use when:** Vault UI, locking/unlocking, CRUD on stored secrets.
+**Use when:** Vault UI, locking/unlocking, CRUD on stored secrets; extensions register **`register_vault_session_clear_hook`** so locking clears their in-memory caches (bundled memory skill uses this).
 
-**Primary API:** `vault_path`, `is_unlocked`, `clear_session_key`, load/save/list helpers (see module for full set).
+**Primary API:** `vault_path`, `is_unlocked`, `clear_session_key`, `register_vault_session_clear_hook`, load/save/list helpers (see module for full set).
 
 **Developer guide:** [password_vault.md](password_vault.md).
 

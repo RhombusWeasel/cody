@@ -62,8 +62,8 @@ flowchart TD
 | What | Where (default tiers) | Contract | Loaded by | Notes |
 |------|------------------------|----------|-----------|-------|
 | Skill | `<skill-dir>/SKILL.md` (+ optional `config.json`, `scripts/`) | YAML frontmatter: `name`, `description`; markdown body | [`utils/skills.py`](../utils/skills.py) `SkillManager.discover_skills` | Optional per-skill enable map: `skills.enabled` in config. |
-| Skill sidebar tab | `<skill-dir>/components/sidebar_tab.py` | `sidebar_label: str`; `get_sidebar_widget()` or `SidebarWidget` class; optional `sidebar_tooltip` | [`utils/skill_components.py`](../utils/skill_components.py) `discover_sidebar_tabs` | Temporarily prepends `scripts/` to `sys.path` while loading. |
-| Skill leader menu | `<skill-dir>/components/leader_menu.py` | `def register_leader(reg):` using `reg.add_submenu` / `reg.add_action` | [`utils/leader_registry.py`](../utils/leader_registry.py) `discover_leader_entries` | Same `scripts/` path behavior as sidebar. |
+| Skill sidebar tab | `<skill-dir>/components/sidebar_tab.py` | `sidebar_label: str`; `get_sidebar_widget()` or `SidebarWidget` class; optional `sidebar_tooltip` | [`utils/skill_components.py`](../utils/skill_components.py) `discover_sidebar_tabs` | |
+| Skill leader menu | `<skill-dir>/components/leader_menu.py` | `def register_leader(reg):` using `reg.add_submenu` / `reg.add_action` | [`utils/leader_registry.py`](../utils/leader_registry.py) `discover_leader_entries` | |
 | Skill CSS | `<skill-dir>/components/**/*.css` | Valid Textual CSS | [`main.py`](../main.py) merges paths after scanning `components/` | Walks only `components/` under the skill. |
 | Agent tool | Tiered `tools/**/*.py` | At import: `register_tool("name", fn, tags=[...])`; callable needs usable docstring for OpenAI schema | [`utils/fs.py`](../utils/fs.py) `load_folder` from [`main.py`](../main.py) | Passed to the model when enabled; favor skills for heavy guidance. |
 | Skill tool | `<skill-dir>/tools/**/*.py` | Same contract as tiered tools; `register_tool` at import | [`utils/fs.py`](../utils/fs.py) `load_folder` on each path from [`skill_tools_directory_paths`](../utils/skills.py) in [`main.py`](../main.py) (and [`skills/agents/scripts/run_agent.py`](../skills/agents/scripts/run_agent.py)) | Keeps tools next to the skill; respects `skills.enabled`. |
@@ -92,7 +92,7 @@ Provider keys (among others): `session.provider`, `providers.<name>.model`, `pro
 
 ## Password vault
 
-Unlock, register, read, and delete encrypted credentials and notes: **[password_vault.md](password_vault.md)**.
+Unlock, register, read, and delete encrypted credentials and notes: **[password_vault.md](password_vault.md)**. Core API: [`utils/password_vault.py`](../utils/password_vault.py). Skills that store secrets should keep them in the vault and register a session clear hook via **`register_vault_session_clear_hook`** when they cache decrypted material so locking the vault clears skill-side caches.
 
 ## Core code changes
 
