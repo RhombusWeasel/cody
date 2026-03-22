@@ -165,17 +165,20 @@ class MessageInput(TextArea):
         self.text = self.input_history[self.history_index]
         self._cursor_to_end()
         event.prevent_default()
+        event.stop()
     elif event.key == "down":
       if self.history_index < len(self.input_history) - 1:
         self.history_index += 1
         self.text = self.input_history[self.history_index]
         self._cursor_to_end()
         event.prevent_default()
+        event.stop()
       elif self.history_index == len(self.input_history) - 1:
         self.history_index = len(self.input_history)
         self.text = self.current_input
         self._cursor_to_end()
         event.prevent_default()
+        event.stop()
     elif event.key == "shift+enter":
       event.prevent_default()
       event.stop()
