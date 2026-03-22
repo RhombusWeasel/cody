@@ -6,7 +6,16 @@ from textual import on
 
 class InputModal(ModalScreen):
 
-  def __init__(self, title: str, initial_value: str = "", multiline: bool = False, language: str | None = None, code_editor: bool = False, confirm_only: bool = False):
+  def __init__(
+    self,
+    title: str,
+    initial_value: str = "",
+    multiline: bool = False,
+    language: str | None = None,
+    code_editor: bool = False,
+    confirm_only: bool = False,
+    password: bool = False,
+  ):
     super().__init__()
     self.title_text = title
     self.initial_value = initial_value
@@ -14,6 +23,7 @@ class InputModal(ModalScreen):
     self.language = language
     self.code_editor = code_editor
     self.confirm_only = confirm_only
+    self.password = password
 
   def compose(self) -> ComposeResult:
     with Vertical(id="input_modal_container"):
@@ -24,7 +34,7 @@ class InputModal(ModalScreen):
         elif self.multiline:
           yield TextArea(self.initial_value, id="input_modal_input", language=self.language)
         else:
-          yield Input(self.initial_value, id="input_modal_input")
+          yield Input(self.initial_value, id="input_modal_input", password=self.password)
       with Horizontal(classes="modal-button-container"):
         from components.utils.buttons import ActionButton
         if self.confirm_only:
@@ -52,6 +62,10 @@ class InputModal(ModalScreen):
         text_area.language = "lua"
       except ImportError:
         pass
+
+  @on(Input.Submitted, "#input_modal_input")
+  def on_input_submitted(self) -> None:
+    self.on_save()
 
   def on_save(self) -> None:
     if self.confirm_only:

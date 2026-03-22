@@ -3,6 +3,7 @@ from typing import Any
 
 from textual.app import ComposeResult
 from textual.containers import Vertical
+from textual.widget import Widget
 from textual.widgets import Button
 from textual import on
 
@@ -72,21 +73,25 @@ class GenericTree(Vertical):
     """Reload tree from data. Call after external data changes."""
     self._refresh()
 
+  def create_row_widget(self, entry: TreeEntry) -> Widget:
+    """Override to use custom row widgets (e.g. vault secret rows)."""
+    return TreeRow(
+      node_id=entry.node_id,
+      indent=entry.indent,
+      is_expandable=entry.is_expandable,
+      is_expanded=entry.is_expanded,
+      display_name=entry.display_name,
+      icon=entry.icon,
+      button_factory=lambda nid, exp: self._get_buttons_for_entry(nid, exp),
+    )
+
   def _refresh(self) -> None:
     if not self._rows_container:
       return
     for child in list(self._rows_container.children):
       child.remove()
     for entry in self.get_visible_entries():
-      row = TreeRow(
-        node_id=entry.node_id,
-        indent=entry.indent,
-        is_expandable=entry.is_expandable,
-        is_expanded=entry.is_expanded,
-        display_name=entry.display_name,
-        icon=entry.icon,
-        button_factory=lambda nid, exp: self._get_buttons_for_entry(nid, exp),
-      )
+      row = self.create_row_widget(entry)
       self._rows_container.mount(row)
 
   def _get_buttons_for_entry(self, node_id: Any, is_expandable: bool) -> list[Button]:

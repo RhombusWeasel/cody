@@ -1,3 +1,4 @@
+from textual import on
 from textual.containers import VerticalScroll
 from textual.widgets import TabbedContent, TabPane
 
@@ -7,6 +8,7 @@ from components.db.db_sidebar_tab import DBSidebarTab
 from components.fs.file_tree import FileTreeTab
 from components.git.git_sidebar_tab import GitSidebarTab
 from components.sidebar.chat_history import ChatHistoryTab
+from components.sidebar.password_vault_tab import PasswordVaultTab
 
 from utils.cfg_man import cfg
 from utils.skill_components import discover_sidebar_tabs
@@ -19,6 +21,7 @@ TAB_TOOLTIPS = {
   "tab-git": "Git",
   "tab-tools": "Skills",
   "tab-db": "DB Connections",
+  "tab-vault": "Password vault",
   "tab-settings": "Settings",
 }
 
@@ -41,6 +44,8 @@ class Sidebar(VerticalScroll):
                 yield ToolList()
             with TabPane(icons.DB, id="tab-db", classes="tabbed-content-label"):
                 yield DBSidebarTab()
+            with TabPane(icons.VAULT, id="tab-vault", classes="tabbed-content-label"):
+                yield PasswordVaultTab()
             for tab_id, label, factory, tooltip in discover_sidebar_tabs():
                 with TabPane(label, id=tab_id, classes="tabbed-content-label"):
                     yield factory()
@@ -59,3 +64,14 @@ class Sidebar(VerticalScroll):
                     tabs.get_tab(tab_id).tooltip = tip
                 except ValueError:
                     pass
+
+    @on(TabbedContent.TabActivated)
+    def _on_sidebar_tab_activated(self, event: TabbedContent.TabActivated) -> None:
+        pane = event.pane
+        if pane is None or pane.id != "tab-vault":
+            return
+        try:
+            vault_tab = pane.query_one(PasswordVaultTab)
+        except Exception:
+            return
+        vault_tab.request_unlock_if_needed()

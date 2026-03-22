@@ -65,6 +65,8 @@ class FormModal(ModalScreen):
       yield TextArea.code_editor(initial, id=widget_id, language=field.get("language"))
     elif field_type == "textarea":
       yield TextArea(initial, id=widget_id)
+    elif field_type == "password":
+      yield Input(initial, id=widget_id, placeholder=placeholder, password=True)
     else:
       yield Input(initial, id=widget_id, placeholder=placeholder)
 

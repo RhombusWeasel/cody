@@ -99,17 +99,6 @@ class CustomTerminal(Terminal):
         self._screen.resize(self.nrow, self.ncol)
 
     async def on_key(self, event: events.Key) -> None:
-        if event.key in ["ctrl+i", "ctrl+t", "ctrl+s"]:
-            if event.key == "ctrl+i":
-                self.app.action_send_terminal_to_chat()
-            elif event.key == "ctrl+t":
-                self.app.action_toggle_visible("term-sidebar")
-            elif event.key == "ctrl+s":
-                self.app.action_toggle_visible("util-sidebar")
-            event.prevent_default()
-            event.stop()
-            return
-            
         self._term_scroll_offset = 0
 
     async def on_mouse_scroll_up(self, event: events.MouseScrollUp):
@@ -191,12 +180,6 @@ class CustomTerminal(Terminal):
         return "\n".join(text_lines)
 
 class TerminalSidebar(VerticalScroll):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._custom_bindings = [
-            ('ctrl+i', 'send_terminal_to_chat', 'Send Terminal to Chat'),
-        ]
-
     def compose(self):
         from components.utils.buttons import ActionButton
         yield ActionButton("Send to Chat", action=self.app.on_send_terminal_chat, id="btn_send_terminal_chat", variant="primary", classes="action-btn")
@@ -211,3 +194,22 @@ class TerminalSidebar(VerticalScroll):
             self._terminal_started = True
             terminal = self.query_one("#terminal_bash", CustomTerminal)
             terminal.start()
+
+
+def register_leader_chords(reg) -> None:
+    """Leader: Bars (util/terminal toggles) and top-level send terminal to chat."""
+    from textual.app import App as TextualApp
+
+    async def toggle_util(app: TextualApp) -> None:
+        app.action_toggle_visible("util-sidebar")
+
+    async def toggle_terminal(app: TextualApp) -> None:
+        app.action_toggle_visible("term-sidebar")
+
+    async def send_terminal(app: TextualApp) -> None:
+        app.action_send_terminal_to_chat()
+
+    reg.add_submenu((), "b", "Bars / side panels")
+    reg.add_action(("b",), "u", "Toggle util sidebar", toggle_util)
+    reg.add_action(("b",), "t", "Toggle terminal sidebar", toggle_terminal)
+    reg.add_action((), "i", "Send terminal to chat", send_terminal)

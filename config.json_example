@@ -22,7 +22,8 @@
   "interface": {
     "sidebar_open_on_start": true,
     "show_system_messages": true,
-    "show_tool_messages": true
+    "show_tool_messages": true,
+    "leader_key": "ctrl+space"
   },
   "prompts": {
     "system": "\nYou are Cody a highly skilled programming assistant.\n\nYou are currently working in the directory: {working_directory}\n"

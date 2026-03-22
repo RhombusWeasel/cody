@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import TabbedContent, TabPane
@@ -5,6 +9,9 @@ from textual.widget import Widget
 from textual.reactive import reactive
 from textual import on
 from textual.events import Click
+
+if TYPE_CHECKING:
+  from utils.leader_registry import LeaderRegistrar
 
 
 def _reparent_preserving_children(child: Widget, new_parent: Widget) -> None:
@@ -195,3 +202,35 @@ class Workspace(Widget):
             self.active_pane.focus()
         except ValueError:
             self.set_active_pane(panes[-1])
+
+
+def register_leader_chords(reg: LeaderRegistrar) -> None:
+    """Leader menu: Window — splits, close pane, focus panes (see chat for tab actions)."""
+    from textual.app import App as TextualApp
+
+    async def split_vertical(app: TextualApp) -> None:
+        ws = app.query_one(Workspace)
+        await ws.split_vertical()
+
+    async def split_horizontal(app: TextualApp) -> None:
+        ws = app.query_one(Workspace)
+        await ws.split_horizontal()
+
+    async def close_pane(app: TextualApp) -> None:
+        ws = app.query_one(Workspace)
+        await ws.close_active_pane()
+
+    async def focus_next(app: TextualApp) -> None:
+        ws = app.query_one(Workspace)
+        ws.focus_next_pane()
+
+    async def focus_prev(app: TextualApp) -> None:
+        ws = app.query_one(Workspace)
+        ws.focus_previous_pane()
+
+    reg.add_submenu((), "w", "Window")
+    reg.add_action(("w",), "v", "Split vertical", split_vertical)
+    reg.add_action(("w",), "h", "Split horizontal", split_horizontal)
+    reg.add_action(("w",), "q", "Close pane (split)", close_pane)
+    reg.add_action(("w",), "l", "Focus next pane", focus_next)
+    reg.add_action(("w",), "r", "Focus previous pane", focus_prev)

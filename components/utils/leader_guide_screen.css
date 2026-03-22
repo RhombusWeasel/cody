@@ -1,0 +1,21 @@
+LeaderGuideScreen {
+  align: right bottom;
+}
+
+#leader_guide_panel {
+  width: 38;
+  height: auto;
+  margin: 0 1 1 0;
+  padding: 0 1 1 1;
+  background: $panel;
+  border: round $primary;
+}
+
+#leader_guide_path {
+  text-style: bold;
+  margin-bottom: 1;
+}
+
+#leader_guide_options {
+  height: auto;
+}

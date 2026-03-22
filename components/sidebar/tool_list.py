@@ -10,7 +10,7 @@ from textual import on
 from components.tree import GenericTree, NodeSelected
 from components.utils.input_modal import InputModal
 from utils.skills import skill_manager
-from utils import fs_tree, file_ops
+from components.utils import fs_tree, file_ops
 from utils.tree_model import TreeEntry
 import utils.icons as icons
 

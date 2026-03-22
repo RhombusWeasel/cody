@@ -207,3 +207,17 @@ class ChatTab(TabPane):
             msg_box.chat_title = self.chat_title
             
         yield msg_box
+
+
+def register_leader_chords(reg) -> None:
+  """Leader menu entries under Window: close tab, new chat (delegates to app actions)."""
+  from textual.app import App as TextualApp
+
+  async def close_tab(app: TextualApp) -> None:
+    await app.action_close_active_tab()
+
+  async def new_chat(app: TextualApp) -> None:
+    await app.action_new_chat_tab()
+
+  reg.add_action(("w",), "c", "Close chat tab", close_tab)
+  reg.add_action(("w",), "n", "New chat tab", new_chat)

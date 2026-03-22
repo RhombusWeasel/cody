@@ -6,7 +6,7 @@ from textual.containers import Vertical, VerticalScroll
 from textual.widgets import Button
 from components.tree import GenericTree
 from utils.cfg_man import cfg
-from utils import fs_tree, file_ops
+from components.utils import fs_tree, file_ops
 from utils.tree_model import TreeEntry
 from utils.icons import FILE_ICONS
 

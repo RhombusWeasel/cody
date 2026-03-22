@@ -13,3 +13,7 @@ class TreeEntry:
   is_expanded: bool
   display_name: str
   icon: str
+  row_variant: str | None = None
+  vault_secret: str = ""
+  vault_revealed: bool = False
+  vault_is_note: bool = False
