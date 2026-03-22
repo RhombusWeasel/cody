@@ -33,7 +33,7 @@ def discover_sidebar_tabs():
     skill_scripts = base_dir / 'scripts'
     if skill_scripts.exists():
       inserted_path = str(skill_scripts)
-      sys.path.insert(0, inserted_path)
+      sys.path.append(inserted_path)
     try:
       mod_name = f"skill_components_{name.replace('-', '_')}"
       spec = importlib.util.spec_from_file_location(mod_name, sidebar_module_path)

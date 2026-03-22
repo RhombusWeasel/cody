@@ -84,8 +84,9 @@ Dismiss callback pattern (also used in [`components/chat/chat.py`](../components
 
 ## Config files
 
-- Global: `~/.agents/cody_settings.json`
-- Project: `{project}/.agents/cody_config.json` (merged on top; typical save target for session)
+- Global: `~/.agents/cody_settings.json` (full merged state when saved from the app while this is the top layer)
+- Project: `{project}/.agents/cody_config.json` (merged on top; **save writes only overrides** vs global + any earlier paths — see [`cfg_man.py`](../utils/cfg_man.py))
+- Built-in defaults: `register_default_config` + `cfg.apply_registered_defaults()` after `load_project_config`
 
 Provider keys (among others): `session.provider`, `providers.<name>.model`, `providers.<name>.opts`.
 

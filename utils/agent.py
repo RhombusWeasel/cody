@@ -1,5 +1,5 @@
 from utils.tool import get_tools
-from utils.cfg_man import cfg
+from utils.cfg_man import cfg, register_default_config
 from utils.skills import skill_manager
 from utils.providers import get_provider, get_provider_config
 
@@ -111,3 +111,12 @@ class TaskAgent():
                     'result': result
                 })
                 self.add_msg('tool', tool_data)
+
+register_default_config({
+  "prompts": {
+    "system": (
+      "\nYou are Cody a highly skilled programming assistant.\n\n"
+      "You are currently working in the directory: {working_directory}\n"
+    ),
+  },
+})

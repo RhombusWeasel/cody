@@ -1,5 +1,29 @@
 import os
 import asyncio
+import argparse
+
+from utils.cfg_man import cfg
+
+import utils.providers  # noqa: F401
+import utils.agent  # noqa: F401
+import utils.skills  # noqa: F401
+import utils.cmd_loader  # noqa: F401
+import utils.db  # noqa: F401
+import utils.interface_defaults  # noqa: F401
+
+parser = argparse.ArgumentParser()
+parser.add_argument('working_directory', type=str, help='The working directory', default='.')
+args = parser.parse_args()
+
+if args.working_directory == '.':
+  args.working_directory = os.getcwd()
+else:
+  args.working_directory = args.working_directory
+
+cfg.load_project_config(args.working_directory)
+cfg.apply_registered_defaults()
+cfg.set('session.working_directory', args.working_directory)
+
 from textual import on
 from textual.app import App
 from components.chat.chat import ChatTab, MsgBox
@@ -12,26 +36,10 @@ from components.utils.leader_guide_screen import LeaderGuideScreen
 from textual.containers import Horizontal, Vertical
 
 import utils.fs as fs
-from utils.agent import Agent
-from utils.cfg_man import cfg
 from utils.db import db_manager
 from components.sidebar.chat_history import ChatHistoryTab
 
 from utils.theme_man import discover_themes
-
-import argparse
-parser = argparse.ArgumentParser()
-parser.add_argument('working_directory', type=str, help='The working directory', default='.')
-args = parser.parse_args()
-
-show_system_messages = cfg.get('interface.show_system_messages')
-if args.working_directory == '.':
-  args.working_directory = os.getcwd()
-else:
-  args.working_directory = args.working_directory
-
-cfg.load_project_config(args.working_directory)
-cfg.set('session.working_directory', args.working_directory)
 
 from utils.git import ensure_git_repo
 ensure_git_repo(args.working_directory)
@@ -69,6 +77,8 @@ for tool_path in skill_tools_directory_paths(args.working_directory):
     fs.load_folder(tool_path, '.py')
 
 discover_leader_entries()
+
+show_system_messages = cfg.get('interface.show_system_messages')
 
 visibility = {
   'util-sidebar': cfg.get('interface.sidebar_open_on_start'),

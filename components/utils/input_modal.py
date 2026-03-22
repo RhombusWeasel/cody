@@ -176,18 +176,28 @@ class InputModal(ModalScreen):
       except ImportError:
         pass
 
-    def focus_modal_container() -> None:
+    def focus_input_widget() -> None:
+      try:
+        self.query_one("#input_modal_input").focus()
+      except Exception:
+        pass
+
+    def focus_modal_container_then_input() -> None:
       try:
         box = self.query_one("#input_modal_container")
         box.can_focus = True
         box.focus()
       except Exception:
         pass
+      # Second refresh: move focus to the field after the container absorbed any
+      # stray Enter from the same tick as push_screen (see below).
+      self.call_after_refresh(focus_input_widget)
 
     # Ghost Enter: submitting chat handles Enter in the same message pump turn as
     # push_screen; focus can land on Save/Input and that key (or a queued repeat)
-    # is delivered to the new screen. Defer + focus a non-Input parent avoids Input.Submitted.
-    self.call_after_refresh(focus_modal_container)
+    # is delivered to the new screen. Defer + focus a non-Input parent avoids Input.Submitted;
+    # then focus the actual input on the following refresh.
+    self.call_after_refresh(focus_modal_container_then_input)
 
   @on(Input.Submitted, "#input_modal_input")
   def on_input_submitted(self) -> None:

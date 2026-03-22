@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 from utils.tool import register_tool
 from utils.skills import skill_manager
+from utils.cfg_man import cfg
+from utils.paths import get_cody_dir
 
 def run_skill(skill_name: str, script_name: str, args: str = "", cwd: str = None):
     """
@@ -45,11 +47,21 @@ def run_skill(skill_name: str, script_name: str, args: str = "", cwd: str = None
         # Fallback to just executing it directly
         command = f'"{script_path}" {args}'
 
+    run_cwd = cwd or cfg.get("session.working_directory") or os.getcwd()
+    env = os.environ.copy()
+    cody_root = str(get_cody_dir())
+    prev_py = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = f"{cody_root}{os.pathsep}{prev_py}" if prev_py else cody_root
+    wd = cfg.get("session.working_directory")
+    if wd:
+        env["CODY_WORKING_DIRECTORY"] = wd
+
     try:
         result = subprocess.run(
             command,
             shell=True,
-            cwd=cwd,
+            cwd=run_cwd,
+            env=env,
             capture_output=True,
             text=True
         )

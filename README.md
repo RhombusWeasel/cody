@@ -15,12 +15,7 @@ cd cody
 uv sync
 ```
 
-Copy the config template and edit:
-
-```bash
-cp config.json_example .agents/cody_config.json
-# Or for global: ~/.agents/cody_settings.json
-```
+On first run, Cody merges built-in defaults with any JSON you already have under `~/.agents/cody_settings.json` and `{project}/.agents/cody_config.json`, then writes missing keys. Project files store **only overrides** relative to global (and the app repo’s bundled `.agents/cody_config.json` if present).
 
 ## Usage
 
@@ -54,8 +49,8 @@ We only pass 3 tools to the agent by default
 Because of this they are discouraged and users should favour the below skills implementation.
 
 ### Config
-- JSON config: `~/.agents/cody_settings.json` (global) + `{project}/.agents/cody_config.json` (local)
-- Provider/model selection, API keys, prompts, skill directories
+- JSON config: `~/.agents/cody_settings.json` (global) + `{project}/.agents/cody_config.json` (overrides only; merged on load)
+- Defaults are registered in code (`register_default_config` in `utils/cfg_man.py` and call sites); provider/model, prompts, skill directories, etc.
 
 ## Customized Tooling
 
@@ -101,6 +96,5 @@ cody/
 ├── components/          # UI (chat, sidebar, terminal, fs, git, db)
 ├── tools/               # Built-in tools (skills, system)
 ├── skills/              # Bundled skills (e.g. coding); optional skill cmd/ per skill
-├── utils/               # Agent, config, providers, db, git, etc.
-└── config.json_example  # Config template
+└── utils/               # Agent, config (`cfg_man`, `register_default_config`), providers, db, git, etc.
 ```

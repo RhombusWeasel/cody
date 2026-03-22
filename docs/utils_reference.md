@@ -26,13 +26,13 @@ For how to extend Cody (skills, tools, commands, themes), see [extending_cody.md
 
 ## cfg_man.py
 
-**Purpose:** Layered JSON configuration with deep merge, dotted-path get/set, and save to the project config path when set.
+**Purpose:** Layered JSON configuration with deep merge, dotted-path get/set, code-registered defaults, and save. The active `save_path` (usually `{working_directory}/.agents/cody_config.json`) stores a **deep overlay**: only keys that differ from the merge of all lower-precedence files on disk (`~/.agents/cody_settings.json`, then `$CODY_DIR/.agents/cody_config.json` when present).
 
-**Use when:** Reading or writing settings, merging skill `config.json` into `cfg.data`, or understanding load order (`~/.agents/cody_settings.json` then repo `.agents/cody_config.json`).
+**Use when:** Reading or writing settings, merging skill `config.json` into `cfg.data`, registering defaults (`register_default_config`), calling `cfg.apply_registered_defaults()` after `load_project_config`, or understanding load/save order.
 
-**Primary API:** `deep_update`, `Config` (`load_all`, `load_project_config`, `get`, `set`, `drill`, `save`), module singleton `cfg`.
+**Primary API:** `deep_update`, `deep_merge_missing`, `register_default_config`, `Config` (`load_all`, `load_project_config`, `apply_registered_defaults`, `get`, `set`, `drill`, `save`), module singleton `cfg`.
 
-**Depends on:** `utils.paths` (for default paths and migrations).
+**Depends on:** `utils.paths` (default config paths under `~/.agents` and `$CODY_DIR`).
 
 ---
 

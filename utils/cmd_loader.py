@@ -2,13 +2,17 @@ import os
 import importlib.util
 import inspect
 
-from utils.cfg_man import cfg
+from utils.cfg_man import cfg, register_default_config
 from utils.paths import (
     default_command_directory_templates,
     parse_directory_list,
     resolve_dir_templates,
 )
 from utils.skills import skill_command_directory_paths
+
+register_default_config({
+  "commands": {"directories": default_command_directory_templates()},
+})
 
 class CommandBase:
     description: str = "Base command"

@@ -1,7 +1,27 @@
 from utils.providers.base import BaseProvider, ChatResponse
 from utils.providers.ollama import OllamaProvider
 from utils.providers.openai import OpenAIProvider
-from utils.cfg_man import cfg
+from utils.cfg_man import cfg, register_default_config
+
+register_default_config({
+  "session": {"provider": "ollama"},
+  "providers": {
+    "ollama": {
+      "model": "qwen3-coder:30b",
+      "opts": {
+        "num_ctx": 16384,
+        "temperature": 0.3,
+        "seed": 42,
+        "top_k": 30,
+        "top_p": 0.5,
+      },
+    },
+    "openai": {
+      "model": "gpt-5.4-mini",
+      "opts": {"temperature": 0.3},
+    },
+  },
+})
 
 PROVIDERS: dict[str, type] = {
   "ollama": OllamaProvider,

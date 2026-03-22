@@ -39,6 +39,11 @@ def clear_session_key() -> None:
     clear_openai_api_key_cache()
   except ImportError:
     pass
+  try:
+    from utils.memory_vault import clear_memory_password_cache
+    clear_memory_password_cache()
+  except ImportError:
+    pass
 
 
 def _derive_fernet_key(password: str, salt: bytes) -> bytes:

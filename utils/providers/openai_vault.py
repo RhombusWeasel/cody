@@ -11,7 +11,7 @@ OPENAI_VAULT_LABEL = "OpenAI API key"
 OPENAI_VAULT_GROUP = "providers"
 OPENAI_VAULT_USERNAME = ""
 
-# Template / example values (e.g. config.json_example) must not skip the vault + key modal.
+# Placeholder API keys in config must not skip the vault + key modal.
 _PLACEHOLDER_SUBSTRINGS = (
   "nice-try-byok",
   "byok-im-afraid",
