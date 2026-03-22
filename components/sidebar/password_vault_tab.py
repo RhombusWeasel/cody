@@ -36,7 +36,6 @@ class PasswordVaultTab(VerticalScroll):
   def _on_unlock_done(self, ok: bool) -> None:
     if ok:
       self._show_unlocked()
-      self.query_one("#password_vault_tree", PasswordVaultTree).reload()
     else:
       hint = self.query_one("#vault_locked_hint", Label)
       hint.update("Vault locked. Select this tab again to try again.")
@@ -44,6 +43,8 @@ class PasswordVaultTab(VerticalScroll):
   def _show_unlocked(self) -> None:
     self.query_one("#vault_locked_hint", Label).display = False
     self.query_one("#password_vault_tree", PasswordVaultTree).display = True
+    # Tree's first _refresh ran while locked (empty); reload after unlock from chat or tab.
+    self._reload_tree()
 
   def _reload_tree(self) -> None:
     self.query_one("#password_vault_tree", PasswordVaultTree).reload()

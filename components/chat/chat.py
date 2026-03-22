@@ -110,10 +110,46 @@ class MsgBox(Widget):
   def on_mount(self) -> None:
     self.watch_messages(self.messages)
 
+  async def _abort_agent_response_openai(
+    self,
+    user_text: str,
+    placeholder_id: str,
+    git_checkpoint: str | None,
+    len_before: int,
+  ) -> None:
+    user_msg = {"role": "user", "content": user_text}
+    if git_checkpoint:
+      user_msg["git_checkpoint"] = git_checkpoint
+    self.actor.msg.append(user_msg)
+    self.actor.msg.append({
+      "role": "assistant",
+      "content": (
+        "OpenAI setup was cancelled or failed. Unlock the password vault and add an API key, "
+        "or set providers.openai.api_key in settings."
+      ),
+    })
+    pre = [m for m in self.messages if m.get("id") != placeholder_id]
+    show_system = self.config.get("interface.show_system_messages", False)
+    displayable = self.actor.msg if show_system else [m for m in self.actor.msg if m.get("role") != "system"]
+    len_before_displayable = len(
+      [m for m in self.actor.msg[:len_before] if show_system or m.get("role") != "system"]
+    )
+    new_from_agent = displayable[len_before_displayable:]
+    new_to_show = [dict(m) for m in new_from_agent[1:]]
+    self.messages = pre + new_to_show
+    await self.save_chat()
+    self._refresh_chat_history()
+
   async def get_agent_response(self, user_text: str, placeholder_id: str, git_checkpoint: str | None = None) -> None:
     from utils.tool import execute_tool
+    from utils.providers.openai_vault import ensure_openai_api_key_for_tui
 
     len_before = len(self.actor.msg)
+
+    if cfg.get("session.provider", "").lower() == "openai":
+      if not await ensure_openai_api_key_for_tui(self.app):
+        await self._abort_agent_response_openai(user_text, placeholder_id, git_checkpoint, len_before)
+        return
 
     user_msg = {"role": "user", "content": user_text}
     if git_checkpoint:
@@ -121,7 +157,22 @@ class MsgBox(Widget):
     self.actor.msg.append(user_msg)
 
     while True:
-      resp = await asyncio.to_thread(self.actor.get_response, "")
+      try:
+        resp = await asyncio.to_thread(self.actor.get_response, "")
+      except Exception as e:
+        from openai import AuthenticationError
+
+        if isinstance(e, AuthenticationError) and cfg.get("session.provider", "").lower() == "openai":
+          from utils.providers.openai_vault import clear_openai_api_key_cache
+          clear_openai_api_key_cache()
+          self.actor.add_msg(
+            "assistant",
+            "OpenAI authentication failed (invalid or expired API key). "
+            "Fix providers.openai.api_key in settings, add a key in the Password Vault, "
+            "or set OPENAI_API_KEY in the environment.",
+          )
+          break
+        raise
       if not resp.message.tool_calls:
         break
       for tc in resp.message.tool_calls:

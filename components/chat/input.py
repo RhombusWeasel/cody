@@ -178,10 +178,12 @@ class MessageInput(TextArea):
         event.prevent_default()
     elif event.key == "shift+enter":
       event.prevent_default()
+      event.stop()
       self.insert("\n")
       return
     elif event.key == "enter":
       event.prevent_default()
+      event.stop()
       self._submit()
       return
 

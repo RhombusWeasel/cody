@@ -128,6 +128,8 @@ For how to extend Cody (skills, tools, commands, themes), see [extending_cody.md
 
 **Primary API:** `vault_path`, `is_unlocked`, `clear_session_key`, load/save/list helpers (see module for full set).
 
+**Developer guide:** [password_vault.md](password_vault.md).
+
 **Depends on:** `cryptography`.
 
 ---

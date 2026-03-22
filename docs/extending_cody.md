@@ -11,6 +11,7 @@ How to add behavior, agent capabilities, and UI without forking core code. For a
 | User-triggered chat actions (`/foo`) | **Slash commands** (`CommandBase` in `$CODY_DIR/cmd/` and optional `<skill-dir>/cmd/`) | Chat-local UX, not necessarily exposed as LLM tools. |
 | Extra sidebar tab or leader-menu chords for a skill | **Skill hooks** (`components/sidebar_tab.py`, `components/leader_menu.py`, optional CSS) | Discovered from the skill’s directory; no edit to `main.py`. |
 | Look and feel | **Themes** (`.py` in tiered `themes/`) | `discover_themes()` + `theme` export. |
+| Encrypted user secrets (passwords, API keys, notes) | **[`utils/password_vault.py`](../utils/password_vault.py)** | Procedures: [password_vault.md](password_vault.md). |
 
 Bundled examples: [examples/README.md](../examples/README.md) (`examples/skills/` including skill `cmd/`, `examples/component/`).
 
@@ -83,6 +84,10 @@ Dismiss callback pattern (also used in [`components/chat/chat.py`](../components
 - Project: `{project}/.agents/cody_config.json` (merged on top; typical save target for session)
 
 Provider keys (among others): `session.provider`, `providers.<name>.model`, `providers.<name>.opts`.
+
+## Password vault
+
+Unlock, register, read, and delete encrypted credentials and notes: **[password_vault.md](password_vault.md)**.
 
 ## Core code changes
 

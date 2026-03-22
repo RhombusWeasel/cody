@@ -6,7 +6,7 @@ from textual.widgets import Button, Label
 from textual import on
 
 from components.tree import NodeSelected
-from components.utils.input_modal import InputModal
+from skills.git.components.commit_message_modal import CommitMessageModal
 from skills.git.components.diff_modal import DiffModal
 from skills.git.components.git_tree import GitTree, SelectionChanged, _get_working_dir
 from utils.agent import TaskAgent
@@ -38,7 +38,7 @@ class GitSidebarTab(Vertical):
     yield Label(f"{icons.GIT} Manager", id="git_tab_title")
     with Grid(id="git_buttons"):
       yield RefreshButton(action=self.on_refresh, id="btn_git_refresh", tooltip="Refresh", classes="action-btn git-icon-btn")
-      yield ActionButton(GIT_COMMIT, action=self.on_commit, id="btn_git_commit", tooltip="AI commit staged", classes="action-btn git-icon-btn")
+      yield ActionButton(GIT_COMMIT, action=self.on_commit, id="btn_git_commit", tooltip="Commit staged", classes="action-btn git-icon-btn")
       yield ActionButton(GIT_ADD, action=self.on_stage, id="btn_git_stage", tooltip="Stage selected / all", classes="action-btn git-icon-btn")
       yield ActionButton(GIT_UNSTAGE, action=self.on_unstage, id="btn_git_unstage", tooltip="Unstage selected", classes="action-btn git-icon-btn")
       yield RunButton(action=self.on_checkout, id="btn_git_checkout", tooltip="Checkout selected branch", classes="action-btn git-icon-btn")
@@ -96,9 +96,7 @@ class GitSidebarTab(Vertical):
     except git.exc.InvalidGitRepositoryError:
       self.app.notify("Not a git repository", severity="warning")
       return
-    self.run_worker(self._generate_and_show_commit_modal(repo))
 
-  async def _generate_and_show_commit_modal(self, repo: git.Repo) -> None:
     if self.selected_for_action:
       try:
         repo.index.add(list(self.selected_for_action))
@@ -113,10 +111,12 @@ class GitSidebarTab(Vertical):
     if not diff:
       self.app.notify("Nothing staged to commit", severity="warning")
       return
-    self.app.notify("Generating commit message...", severity="information")
-    agent = TaskAgent(COMMIT_MSG_PROMPT, tools=[])
-    msg = await agent.run(f"Generate a commit message for:\n\n{diff}")
-    initial = msg.strip() if msg else ""
+
+    async def fill_ai() -> str:
+      self.app.notify("Generating commit message...", severity="information")
+      agent = TaskAgent(COMMIT_MSG_PROMPT, tools=[])
+      msg = await agent.run(f"Generate a commit message for:\n\n{diff}")
+      return (msg or "").strip()
 
     def do_commit(m: str | None) -> None:
       if m and m.strip():
@@ -129,7 +129,10 @@ class GitSidebarTab(Vertical):
         except Exception:
           self.app.notify("Nothing to commit or commit failed", severity="warning")
 
-    self.app.push_screen(InputModal("Commit message", initial_value=initial, multiline=True), do_commit)
+    self.app.push_screen(
+      CommitMessageModal("Commit message", staged_diff=diff, initial_value="", fill_ai=fill_ai),
+      do_commit,
+    )
 
   def on_stage(self) -> None:
     wd = _get_working_dir()

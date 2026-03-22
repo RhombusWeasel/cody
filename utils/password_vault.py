@@ -34,6 +34,11 @@ def clear_session_key() -> None:
   global SESSION_KEY, _DATA
   SESSION_KEY = None
   _DATA = None
+  try:
+    from utils.providers.openai_vault import clear_openai_api_key_cache
+    clear_openai_api_key_cache()
+  except ImportError:
+    pass
 
 
 def _derive_fernet_key(password: str, salt: bytes) -> bytes:
