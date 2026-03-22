@@ -36,11 +36,22 @@ def _to_openai_messages(messages: list[dict]) -> list[dict]:
   return out
 
 
-class OpenAIProvider:
-  def __init__(self):
-    api_key = cfg.get("providers.openai.api_key")
-    self.client = OpenAI(api_key=api_key) if api_key else OpenAI()
+def _resolve_api_key() -> str | None:
+  """TUI sets cache via openai_vault; TaskAgent/CLI use cfg (or env via OpenAI())."""
+  from utils.providers.openai_vault import (
+    get_cached_openai_api_key,
+    looks_like_placeholder_openai_api_key,
+  )
+  cached = get_cached_openai_api_key()
+  if cached and not looks_like_placeholder_openai_api_key(cached):
+    return cached
+  cfg_key = (cfg.get("providers.openai.api_key") or "").strip()
+  if cfg_key and not looks_like_placeholder_openai_api_key(cfg_key):
+    return cfg_key
+  return None
 
+
+class OpenAIProvider:
   def chat(
     self,
     model: str,
@@ -48,6 +59,8 @@ class OpenAIProvider:
     tools: list | None = None,
     options: dict | None = None,
   ) -> ChatResponse:
+    api_key = _resolve_api_key()
+    client = OpenAI(api_key=api_key) if api_key else OpenAI()
     opts = options or {}
     api_messages = _to_openai_messages(messages)
     kwargs = {
@@ -59,7 +72,7 @@ class OpenAIProvider:
     if tools:
       kwargs["tools"] = callables_to_openai_tools(tools)
       kwargs["tool_choice"] = "auto"
-    resp = self.client.chat.completions.create(**{k: v for k, v in kwargs.items() if v is not None})
+    resp = client.chat.completions.create(**{k: v for k, v in kwargs.items() if v is not None})
     msg = resp.choices[0].message
     tool_calls = None
     if msg.tool_calls:

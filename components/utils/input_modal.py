@@ -2,7 +2,7 @@ import asyncio
 
 from textual.app import ComposeResult
 from textual.containers import Vertical, Horizontal
-from textual.widgets import Label, Input, Button, TextArea
+from textual.widgets import Label, Input, TextArea
 from textual.screen import ModalScreen
 from textual import on
 
@@ -175,6 +175,19 @@ class InputModal(ModalScreen):
         text_area.language = "lua"
       except ImportError:
         pass
+
+    def focus_modal_container() -> None:
+      try:
+        box = self.query_one("#input_modal_container")
+        box.can_focus = True
+        box.focus()
+      except Exception:
+        pass
+
+    # Ghost Enter: submitting chat handles Enter in the same message pump turn as
+    # push_screen; focus can land on Save/Input and that key (or a queued repeat)
+    # is delivered to the new screen. Defer + focus a non-Input parent avoids Input.Submitted.
+    self.call_after_refresh(focus_modal_container)
 
   @on(Input.Submitted, "#input_modal_input")
   def on_input_submitted(self) -> None:

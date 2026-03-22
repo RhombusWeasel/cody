@@ -1,0 +1,48 @@
+CommitMessageModal {
+  align: center middle;
+}
+
+#commit_message_modal_container {
+  width: 70%;
+  max-width: 120;
+  height: 70%;
+  min-height: 22;
+  background: $panel;
+  border: round $primary;
+  padding: 0;
+}
+
+#commit_diff_heading {
+  height: auto;
+  margin-bottom: 0;
+}
+
+#commit_diff_scroll {
+  height: 1fr;
+  min-height: 6;
+  overflow: scroll;
+  scrollbar-size: 1 2;
+  border: round $primary;
+  padding: 0 1;
+}
+
+#commit_diff_scroll Static {
+  width: auto;
+  height: auto;
+  min-width: 100%;
+}
+
+#commit_message_heading {
+  height: auto;
+  margin-top: 1;
+  margin-bottom: 0;
+}
+
+#commit_message_modal_container .commit-message-body {
+  height: 1fr;
+  min-height: 6;
+}
+
+.commit-message-modal-buttons .modal-button {
+  width: 1fr;
+}
