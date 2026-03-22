@@ -17,8 +17,8 @@ from utils.icons import (
   GIT_STASH, GIT_POP_STASH,
 )
 
-sidebar_label = icons.GIT
-sidebar_tooltip = "Git"
+sidebar_label = ""
+sidebar_tooltip = "Git Manager"
 
 COMMIT_MSG_PROMPT = """You generate conventional git commit messages. Output only the message, no preamble.
 Format: type(scope): subject. Types: feat, fix, docs, style, refactor, test, chore.

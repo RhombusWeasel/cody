@@ -10,7 +10,7 @@ Pane.-active-pane {
     border: solid $accent;
 }
 
-Pane TabbedContent {
+Pane TabContainer {
     height: 1fr;
     min-height: 0;
 }

@@ -4,7 +4,9 @@ from typing import TYPE_CHECKING
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
-from textual.widgets import TabbedContent, TabPane
+from textual.widgets import TabPane
+
+from components.tabs import TabContainer
 from textual.widget import Widget
 from textual.reactive import reactive
 from textual import on
@@ -12,6 +14,14 @@ from textual.events import Click
 
 if TYPE_CHECKING:
   from utils.leader_registry import LeaderRegistrar
+
+
+def pane_containing(widget: Widget) -> Pane | None:
+  """Return the workspace Pane ancestor of a widget, if any."""
+  for w in widget.ancestors:
+    if isinstance(w, Pane):
+      return w
+  return None
 
 
 def _reparent_preserving_children(child: Widget, new_parent: Widget) -> None:
@@ -28,19 +38,19 @@ def _reparent_preserving_children(child: Widget, new_parent: Widget) -> None:
 
 
 class Pane(Widget):
-    """A single pane in the workspace, containing a TabbedContent."""
-    
+    """A single pane in the workspace, containing a TabContainer."""
+
     def __init__(self, workspace, **kwargs):
         super().__init__(**kwargs)
         self.workspace = workspace
         self.can_focus = True
 
     def compose(self) -> ComposeResult:
-        yield TabbedContent()
+        yield TabContainer()
 
     @property
-    def tabs(self) -> TabbedContent:
-        return self.query_one(TabbedContent)
+    def tabs(self) -> TabContainer:
+        return self.query_one(TabContainer)
 
     async def add_tab(self, tab: TabPane, set_active: bool = True):
         await self.tabs.add_pane(tab)
@@ -51,7 +61,7 @@ class Pane(Widget):
         active = self.tabs.active
         if active:
             await self.tabs.remove_pane(active)
-            if self.tabs.active is None and len(list(self.tabs.query(TabPane))) == 0:
+            if not self.tabs.active and len(list(self.tabs.query(TabPane))) == 0:
                 # If no tabs left, we might want to close the pane if it's not the only one
                 await self.workspace.check_empty_pane(self)
 

@@ -22,6 +22,32 @@ GenericTree {
     background: $surface-lighten-2;
   }
 
+  GenericTree .tree_rows AgentDescriptionRow:even {
+    background: $surface;
+  }
+
+  GenericTree .tree_rows AgentDescriptionRow:odd {
+    background: $surface-lighten-2;
+  }
+
+  AgentDescriptionRow {
+    width: 100%;
+    height: auto;
+    min-height: 1;
+  }
+
+  AgentDescriptionRow .agent-desc-row {
+    width: 100%;
+    height: auto;
+  }
+
+  AgentDescriptionRow .agent-desc-textarea {
+    width: 1fr;
+    height: auto;
+    min-height: 3;
+    max-height: 12;
+  }
+
   VaultSecretLineRow {
     width: 100%;
     height: auto;

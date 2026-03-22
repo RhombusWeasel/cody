@@ -9,6 +9,13 @@ def get_global_agents_dir() -> str:
     """Returns the absolute path to the global ~/.agents directory."""
     return os.path.join(os.path.expanduser("~"), ".agents")
 
+def bundled_agent_definitions_dir() -> str:
+    """
+    Directory containing shipped sub-agent JSON definitions (skills/agents/bundled/).
+    Used when seeding the agents table on first DB init.
+    """
+    return os.path.join(get_cody_dir(), "skills", "agents", "bundled")
+
 def tiered_dir_templates(subpath: str) -> list[str]:
     """
     Template strings for the standard 3-tier search order (resolved via resolve_dir_templates):
