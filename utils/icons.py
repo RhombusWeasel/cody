@@ -1,5 +1,45 @@
 """Nerd Font icon codepoints for consistent UI across components."""
 
+# Standard Box Drawing Unicode
+BOX = {
+  "thin": {
+    "v": "│",
+    "h": "─",
+    "t": "┬",
+    "b": "┴",
+    "tl": "├",
+    "tr": "┤",
+    "l": "┌",
+    "r": "┐",
+    "bl": "└",
+    "br": "┘",
+  },
+  "double": {
+    "v": "║",
+    "h": "═",
+    "t": "╦",
+    "b": "╩",
+    "tl": "╠",
+    "tr": "╣",
+    "l": "╔",
+    "r": "╗",
+    "bl": "╚",
+    "br": "╝",
+  },
+  "rounded": {
+    "v": "│",
+    "h": "─",
+    "t": "┬",
+    "b": "┴",
+    "tl": "├",
+    "tr": "┤",
+    "tl": "╭",
+    "tr": "╮",
+    "bl": "╰",
+    "br": "╯",
+  },
+}
+
 # Sidebar Headers
 CHATS = ""
 FILE_SYSTEM = ""
@@ -7,7 +47,7 @@ GIT = ""
 DB = ""
 VAULT = "󰌆"
 SKILLS = ""
-AGENTS = "󱙺"
+# AGENTS = "󱙺"
 SETTINGS = ""
 
 # Selection
