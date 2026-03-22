@@ -7,6 +7,7 @@ register_default_config({
   "session": {"provider": "ollama"},
   "providers": {
     "ollama": {
+      "base_url": "http://127.0.0.1:11434",
       "model": "qwen3-coder:30b",
       "opts": {
         "num_ctx": 16384,

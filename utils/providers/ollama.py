@@ -1,6 +1,7 @@
 import json
 
 from ollama import Client
+from utils.cfg_man import cfg
 from utils.providers.base import ChatResponse, Message, ToolCall as ProviderToolCall
 
 
@@ -39,7 +40,11 @@ def _messages_for_ollama_client(messages: list[dict]) -> list[dict]:
 
 class OllamaProvider:
   def __init__(self):
-    self._client = Client()
+    raw = cfg.get("providers.ollama.base_url") or ""
+    host = raw.strip() if isinstance(raw, str) else str(raw)
+    if not host:
+      host = "http://127.0.0.1:11434"
+    self._client = Client(host=host)
 
   def chat(
     self,
