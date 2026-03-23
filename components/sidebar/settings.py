@@ -15,6 +15,7 @@ SECTION_ICONS: dict[str, str] = {
     "session":    icons.SETTINGS,
     "providers":  icons.CHATS,
     "interface":  icons.FILE_SYSTEM,
+    "file_tree":  icons.FILE_SYSTEM,
     "prompts":    icons.EDIT,
     "skills":     icons.SKILLS,
     "db":         icons.DB,

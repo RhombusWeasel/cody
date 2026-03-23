@@ -38,7 +38,9 @@ def _to_openai_messages(messages: list[dict]) -> list[dict]:
 
 def _resolve_api_key() -> str | None:
   """TUI sets cache via openai_vault; TaskAgent/CLI use cfg (or env via OpenAI())."""
+  import utils.password_vault as password_vault
   from utils.providers.openai_vault import (
+    OPENAI_VAULT_CREDENTIAL_ID,
     get_cached_openai_api_key,
     looks_like_placeholder_openai_api_key,
   )
@@ -48,6 +50,9 @@ def _resolve_api_key() -> str | None:
   cfg_key = (cfg.get("providers.openai.api_key") or "").strip()
   if cfg_key and not looks_like_placeholder_openai_api_key(cfg_key):
     return cfg_key
+  vault_key = password_vault.get_secret(OPENAI_VAULT_CREDENTIAL_ID)
+  if vault_key and not looks_like_placeholder_openai_api_key(vault_key):
+    return vault_key
   return None
 
 

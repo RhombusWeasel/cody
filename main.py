@@ -10,6 +10,8 @@ import utils.skills  # noqa: F401
 import utils.cmd_loader  # noqa: F401
 import utils.db  # noqa: F401
 import utils.interface_defaults  # noqa: F401
+import utils.file_tree_defaults  # noqa: F401
+import skills.brave_search.api  # noqa: F401
 
 parser = argparse.ArgumentParser()
 parser.add_argument('working_directory', type=str, help='The working directory', default='.')
@@ -40,6 +42,7 @@ from utils.db import db_manager
 from components.sidebar.chat_history import ChatHistoryTab
 
 from utils.theme_man import discover_themes
+import utils.password_vault as password_vault
 
 from utils.git import ensure_git_repo
 ensure_git_repo(args.working_directory)
@@ -91,6 +94,7 @@ class TuiApp(App):
   CSS_PATH = _css_paths
 
   async def on_mount(self):
+    password_vault.init_vault(self)
     self._bind_leader_keys()
     themes = discover_themes()
     for t in themes.values():
@@ -120,6 +124,7 @@ class TuiApp(App):
     except Exception:
       pass
     cfg.save()
+    password_vault.init_vault(None)
 
   def compose(self):
     with Vertical(id="app_body"):

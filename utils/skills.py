@@ -1,8 +1,7 @@
 import os
 import re
-import json
 from pathlib import Path
-from utils.cfg_man import cfg, deep_update, register_default_config
+from utils.cfg_man import cfg, register_default_config
 from utils.paths import parse_directory_list, resolve_dir_templates, tiered_dir_templates
 
 register_default_config({
@@ -186,17 +185,7 @@ class SkillManager:
                     if isinstance(enabled_config, dict) and name in enabled_config:
                         if not enabled_config[name]:
                             continue
-                            
-                    skill_config_path = skill_dir / 'config.json'
-                    if skill_config_path.exists():
-                        try:
-                            with open(skill_config_path, 'r', encoding='utf-8') as f:
-                                skill_defaults = json.load(f)
-                            existing = cfg.data.get(name, {})
-                            cfg.data[name] = deep_update(skill_defaults, existing)
-                        except Exception as e:
-                            print(f"Error loading skill config {skill_config_path}: {e}")
-                
+
                     self.skills[name] = {
                         'name': name,
                         'description': description,
