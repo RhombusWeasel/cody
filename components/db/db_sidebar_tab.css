@@ -4,7 +4,11 @@ DBSidebarTab {
     }
     #db_tree_container {
         height: 1fr;
+        width: 100%;
         border-bottom: solid $primary;
+    }
+    #btn_db_add_conn {
+        padding: 1 1;
     }
     #db_query_pane {
         height: 1fr;
