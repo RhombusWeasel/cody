@@ -23,6 +23,10 @@ class FormModal(ModalScreen):
   Optional ``show_when: {"key": "<field_key>", "value": "<str>"}`` hides the field
   unless the controlling field's current value matches (widgets stay mounted).
 
+  Optional ``show_when_all: [ … ]`` requires every clause to match (AND). Each clause is
+  ``{"key": "…", "value": "…"}`` or ``{"key": "…", "values": ["a", "b"]}`` (OR within the clause).
+  If ``show_when_all`` is set, ``show_when`` is ignored.
+
   args: dict of initial values (keyed by field "key") plus any extra data to
         pass through. On Save the form values are merged over args and the result
         is passed to callback. On Cancel the callback is not called.
@@ -59,12 +63,12 @@ class FormModal(ModalScreen):
         return f
     return None
 
-  def _field_visible(self, field: dict) -> bool:
-    sw = field.get("show_when")
-    if not sw:
-      return True
-    ctl_key = sw["key"]
-    expected = str(sw["value"])
+  @staticmethod
+  def _field_is_conditional(field: dict) -> bool:
+    return bool(field.get("show_when_all") or field.get("show_when"))
+
+  def _condition_matches(self, clause: dict) -> bool:
+    ctl_key = clause["key"]
     ctl_field = self._schema_field_by_key(ctl_key)
     if not ctl_field:
       return True
@@ -72,11 +76,23 @@ class FormModal(ModalScreen):
       actual = self._read_field(ctl_field).strip()
     except Exception:
       return False
-    return actual == expected
+    if "values" in clause:
+      allowed = {str(x) for x in clause["values"]}
+      return actual in allowed
+    return actual == str(clause["value"])
+
+  def _field_visible(self, field: dict) -> bool:
+    all_clauses = field.get("show_when_all")
+    if all_clauses:
+      return all(self._condition_matches(c) for c in all_clauses)
+    sw = field.get("show_when")
+    if not sw:
+      return True
+    return self._condition_matches(sw)
 
   def _sync_conditional_visibility(self) -> None:
     for field in self._iter_flat_fields():
-      if not field.get("show_when"):
+      if not self._field_is_conditional(field):
         continue
       key = field["key"]
       try:
@@ -126,7 +142,7 @@ class FormModal(ModalScreen):
       else:
         yield Input(initial, id=widget_id, placeholder=placeholder)
 
-    if field.get("show_when"):
+    if self._field_is_conditional(field):
       # VerticalGroup: height auto — plain Vertical defaults to height 1fr and splits scroll viewport.
       with VerticalGroup(id=f"form_field_wrap_{key}", classes="form-field-conditional"):
         yield from inner()

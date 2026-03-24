@@ -21,10 +21,17 @@ VAULT_GROUP = "cosmos_db"
 
 
 def connection_form_schema(args: dict | None) -> list[dict[str, Any]]:
-  """Fields for SQLite and Cosmos; visibility toggles by ``type``; ``finalize_connection_dict`` enforces by ``type``."""
+  """Fields for SQLite and Cosmos; visibility by ``type`` and Cosmos ``auth_kind``; finalize enforces both."""
   _ = args
   sw_sqlite = {"key": "type", "value": "sqlite3"}
   sw_cosmos = {"key": "type", "value": "cosmos"}
+  sw_auth_conn_str = {"key": "auth_kind", "value": "connection_string"}
+  sw_auth_rsrc_tok = {"key": "auth_kind", "value": "resource_tokens"}
+  sw_auth_acct_key = {"key": "auth_kind", "value": "account_key"}
+  sw_auth_sp = {"key": "auth_kind", "value": "client_secret"}
+  sw_auth_mi = {"key": "auth_kind", "value": "managed_identity"}
+  sw_note_auths = {"key": "auth_kind", "values": ["connection_string", "resource_tokens"]}
+  sw_cred_auths = {"key": "auth_kind", "values": ["account_key", "client_secret"]}
   return [
     {"key": "label", "label": "Label", "type": "text", "placeholder": "e.g. Production"},
     {
@@ -55,55 +62,55 @@ def connection_form_schema(args: dict | None) -> list[dict[str, Any]]:
       "key": "vault_note_id",
       "label": "Vault secure note id (optional if pasting below)",
       "type": "text",
-      "show_when": sw_cosmos,
+      "show_when_all": [sw_cosmos, sw_note_auths],
     },
     {
       "key": "vault_cred_id",
       "label": "Vault credential id (optional if pasting below)",
       "type": "text",
-      "show_when": sw_cosmos,
+      "show_when_all": [sw_cosmos, sw_cred_auths],
     },
     {
       "key": "tenant_id",
       "label": "Cosmos tenant id (client_secret auth)",
       "type": "text",
-      "show_when": sw_cosmos,
+      "show_when_all": [sw_cosmos, sw_auth_sp],
     },
     {
       "key": "managed_identity_client_id",
       "label": "User-assigned managed identity client id (optional)",
       "type": "text",
-      "show_when": sw_cosmos,
+      "show_when_all": [sw_cosmos, sw_auth_mi],
     },
     {
       "key": "inline_connection_string",
       "label": "Paste Cosmos connection string once (vault note)",
       "type": "textarea",
-      "show_when": sw_cosmos,
+      "show_when_all": [sw_cosmos, sw_auth_conn_str],
     },
     {
       "key": "inline_account_key",
       "label": "Paste Cosmos account key once (vault credential)",
       "type": "password",
-      "show_when": sw_cosmos,
+      "show_when_all": [sw_cosmos, sw_auth_acct_key],
     },
     {
       "key": "inline_resource_tokens_json",
       "label": "Paste resource tokens JSON once (vault note)",
       "type": "textarea",
-      "show_when": sw_cosmos,
+      "show_when_all": [sw_cosmos, sw_auth_rsrc_tok],
     },
     {
       "key": "inline_sp_client_id",
       "label": "Paste Entra app (client) id once",
       "type": "text",
-      "show_when": sw_cosmos,
+      "show_when_all": [sw_cosmos, sw_auth_sp],
     },
     {
       "key": "inline_sp_client_secret",
       "label": "Paste client secret once (vault credential)",
       "type": "password",
-      "show_when": sw_cosmos,
+      "show_when_all": [sw_cosmos, sw_auth_sp],
     },
   ]
 
