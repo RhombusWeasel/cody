@@ -12,6 +12,12 @@ TreeRow {
 
   TreeRow .tree-label {
     width: 1fr;
+    min-width: 1;
+  }
+
+  TreeRow .tree-row-actions {
+    width: auto;
+    height: 1;
   }
 
   TreeRow .action-btn {

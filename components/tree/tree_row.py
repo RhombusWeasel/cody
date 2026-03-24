@@ -3,7 +3,7 @@ from typing import Callable, Any
 
 from rich.text import Text
 from textual.app import ComposeResult
-from textual.containers import Horizontal
+from textual.containers import Horizontal, HorizontalGroup
 from textual.events import Click
 from textual.message import Message
 from textual.widgets import Button, Label
@@ -66,8 +66,9 @@ class TreeRow(Widget):
       yield Label(self.indent, classes="tree-indent", markup=False)
       yield Label(expand, classes="tree-expand", markup=False)
       yield Label(label_content, classes="tree-label", markup=False)
-      for btn in self._button_factory(self.node_id, self.is_expandable):
-        yield btn
+      with HorizontalGroup(classes="tree-row-actions"):
+        for btn in self._button_factory(self.node_id, self.is_expandable):
+          yield btn
 
   @on(Click)
   def on_click(self, event: Click) -> None:

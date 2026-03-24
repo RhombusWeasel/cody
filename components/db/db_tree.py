@@ -6,7 +6,7 @@ from textual.widgets import Button
 from components.tree import GenericTree
 from utils.tree_model import TreeEntry
 from utils.db import db_manager
-from utils.icons import DB_ICON_SET, DELETE, REFRESH
+from utils.icons import DB_ICON_SET, REFRESH
 
 
 ROOT_ID = "root"
@@ -15,9 +15,16 @@ ROOT_ID = "root"
 class DBTree(GenericTree):
   """Tree of database connections with per-type explorer children."""
 
-  def __init__(self, on_select: Callable[[str], None] | None = None, icon_set: dict | None = None, **kwargs):
+  def __init__(
+    self,
+    on_select: Callable[[str], None] | None = None,
+    on_edit_connection: Callable[[str], None] | None = None,
+    icon_set: dict | None = None,
+    **kwargs,
+  ):
     super().__init__(root_node_id=ROOT_ID, icon_set=icon_set or DB_ICON_SET, **kwargs)
     self._on_select_callback = on_select
+    self._on_edit_connection = on_edit_connection
     self._child_cache: dict[tuple[str, str], list[str]] = {}
 
   def get_visible_entries(self) -> list[TreeEntry]:
@@ -85,14 +92,21 @@ class DBTree(GenericTree):
     return result
 
   def get_node_buttons(self, node_id: Any, is_expandable: bool) -> list[Button]:
-    from components.utils.buttons import RefreshButton, DeleteButton
+    from components.utils.buttons import EditButton, RefreshButton, DeleteButton
     if node_id == ROOT_ID:
       return []
     if isinstance(node_id, str):
-      return [
+      buttons = [
         RefreshButton(action=lambda n=node_id: self.on_button_action(n, "refresh"), tooltip="Refresh schema"),
-        DeleteButton(action=lambda n=node_id: self.on_button_action(n, "remove"), tooltip="Remove connection"),
       ]
+      if self._on_edit_connection:
+        buttons.append(
+          EditButton(action=lambda n=node_id: self.on_button_action(n, "edit"), tooltip="Edit connection"),
+        )
+      buttons.append(
+        DeleteButton(action=lambda n=node_id: self.on_button_action(n, "remove"), tooltip="Remove connection"),
+      )
+      return buttons
     if isinstance(node_id, tuple) and len(node_id) == 2:
       return []
     return []
@@ -124,7 +138,9 @@ class DBTree(GenericTree):
       self._on_select_callback(path)
 
   def on_button_action(self, node_id: Any, action: str) -> None:
-    if action == "remove" and isinstance(node_id, str):
+    if action == "edit" and isinstance(node_id, str) and self._on_edit_connection:
+      self._on_edit_connection(node_id)
+    elif action == "remove" and isinstance(node_id, str):
       db_manager.remove_connection(node_id)
       self._expanded.discard(node_id)
       self._child_cache = {k: v for k, v in self._child_cache.items() if k[0] != node_id}
