@@ -144,6 +144,7 @@ DB_ICON_SET = {
   "table": DB_TABLE,
   "view": DB_VIEW,
   "trigger": DB_TRIGGER,
+  "container": DB_TABLE,
 }
 
 GIT_ICON_SET = {

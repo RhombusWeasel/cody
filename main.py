@@ -4,14 +4,14 @@ import argparse
 
 from utils.cfg_man import cfg
 
-import utils.providers  # noqa: F401
-import utils.agent  # noqa: F401
-import utils.skills  # noqa: F401
-import utils.cmd_loader  # noqa: F401
-import utils.db  # noqa: F401
-import utils.interface_defaults  # noqa: F401
-import utils.file_tree_defaults  # noqa: F401
-import skills.brave_search.api  # noqa: F401
+import utils.providers
+import utils.agent
+import utils.skills
+import utils.cmd_loader
+import utils.db
+import utils.interface_defaults
+import utils.file_tree_defaults
+#import skills.brave_search.api
 
 parser = argparse.ArgumentParser()
 parser.add_argument('working_directory', type=str, help='The working directory', default='.')

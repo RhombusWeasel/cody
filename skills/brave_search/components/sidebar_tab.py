@@ -3,7 +3,7 @@ import webbrowser
 from collections.abc import Callable
 from urllib.parse import urlparse
 
-from textual import work
+from textual import on, work
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.widgets import Input, Label
@@ -42,6 +42,10 @@ class BraveSearchSidebarTab(Vertical):
       yield Input(placeholder="Search…", id="brave_query_input")
       yield RunButton(action=self.on_search_clicked, id="brave_run_btn", tooltip="Search")
     yield VerticalScroll(id="brave_results_scroll")
+
+  @on(Input.Submitted, "#brave_query_input")
+  def on_brave_query_submitted(self) -> None:
+    self.on_search_clicked()
 
   def on_search_clicked(self) -> None:
     q = self.query_one("#brave_query_input", Input).value.strip()

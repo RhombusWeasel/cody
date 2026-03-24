@@ -9,6 +9,8 @@ from components.utils.input_modal import InputModal
 from components.utils.form_modal import FormModal
 from utils.tree_model import TreeEntry
 from utils.cfg_man import cfg
+from utils.db import db_manager
+from utils.db_connection_forms import connection_form_schema, finalize_connection_dict
 import utils.icons as icons
 
 SECTION_ICONS: dict[str, str] = {
@@ -215,17 +217,18 @@ class SettingsTree(GenericTree):
             val = cfg.get(node_id)
             if not isinstance(val, dict):
                 return
-            schema = [
-                {"key": "label", "label": "Label", "type": "text", "placeholder": "e.g. Production DB"},
-                {"key": "path", "label": "Path / URL", "type": "text", "required": True},
-                {"key": "type", "label": "Type", "type": "text", "placeholder": "e.g. sqlite3"},
-            ]
+            schema = connection_form_schema(val)
 
             def _save(result: dict | None) -> None:
-                if result:
-                    cfg.set(node_id, result)
-                    cfg.changed = False
-                    self.reload()
+                if not result:
+                    return
+                fin = finalize_connection_dict(result, self.app)
+                if not fin:
+                    return
+                cfg.set(node_id, fin)
+                cfg.changed = False
+                db_manager.reload_from_config()
+                self.reload()
 
             self.app.push_screen(FormModal("Edit Connection", schema=schema, args=val, callback=_save))
 
@@ -233,7 +236,23 @@ class SettingsTree(GenericTree):
             lst = cfg.get(node_id)
             if not isinstance(lst, list):
                 return
-            new_item = {k: "" for k in lst[0].keys()} if lst and isinstance(lst[0], dict) else ""
+            if node_id == "db.connections":
+                new_item = {
+                    "id": "",
+                    "type": "sqlite3",
+                    "label": "",
+                    "path": "",
+                    "endpoint": "",
+                    "database": "",
+                    "container": "",
+                    "auth_kind": "default_azure",
+                    "vault_note_id": "",
+                    "vault_cred_id": "",
+                    "tenant_id": "",
+                    "managed_identity_client_id": "",
+                }
+            else:
+                new_item = {k: "" for k in lst[0].keys()} if lst and isinstance(lst[0], dict) else ""
             lst.append(new_item)
             cfg.set(node_id, lst)
             cfg.changed = False
@@ -251,6 +270,8 @@ class SettingsTree(GenericTree):
                 lst.pop(idx)
                 cfg.set(list_path, lst)
                 cfg.changed = False
+                if list_path == "db.connections":
+                    db_manager.reload_from_config()
                 self.reload()
 
         elif action == "edit":

@@ -1,8 +1,8 @@
 import asyncio
 
 from textual.app import ComposeResult
-from textual.containers import Vertical, Horizontal
-from textual.widgets import Label, Input, TextArea
+from textual.containers import Vertical, Horizontal, VerticalScroll
+from textual.widgets import Label, Input, TextArea, Markdown
 from textual.screen import ModalScreen
 from textual import on
 
@@ -26,12 +26,8 @@ class PreviewToChatModal(ModalScreen):
   def compose(self) -> ComposeResult:
     with Vertical(id="preview_to_chat_container"):
       yield Label(self.title_text)
-      yield TextArea(
-        self.body,
-        id="preview_to_chat_body",
-        classes="preview-to-chat-body",
-        read_only=True,
-      )
+      with VerticalScroll(id="preview_to_chat_scroll"):
+        yield Markdown(self.body, id="preview_to_chat_body", classes="preview-to-chat-body")
       with Horizontal(classes="modal-button-container"):
         from components.utils.buttons import ActionButton
         yield ActionButton(
@@ -59,13 +55,18 @@ class PreviewToChatModal(ModalScreen):
     self.dismiss(None)
 
   def on_mount(self) -> None:
-    def focus_preview_body() -> None:
+    try:
+      self.query_one("#preview_to_chat_body", Markdown).code_indent_guides = False
+    except Exception:
+      pass
+
+    def focus_preview_scroll() -> None:
       try:
-        self.query_one("#preview_to_chat_body", TextArea).focus()
+        self.query_one("#preview_to_chat_scroll").focus()
       except Exception:
         pass
 
-    self.call_after_refresh(focus_preview_body)
+    self.call_after_refresh(focus_preview_scroll)
 
 
 async def preview_then_append_chat_message(

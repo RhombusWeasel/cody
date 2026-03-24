@@ -2,7 +2,7 @@ import csv
 import os
 from textual.app import ComposeResult
 from textual.containers import Vertical, Horizontal, VerticalScroll
-from textual.widgets import Button, Label, Input, DataTable
+from textual.widgets import Label, Input, DataTable
 from textual import on
 
 from components.utils.input_modal import InputModal
@@ -11,6 +11,7 @@ from components.db.results_modal import ResultsModal
 from components.db.db_tree import DBTree
 from utils.cfg_man import cfg
 from utils.db import db_manager
+from utils.db_connection_forms import connection_form_schema, finalize_connection_dict
 from utils.icons import EXPORT_CSV, OPEN_EXTERNAL, RUN
 
 
@@ -23,10 +24,10 @@ class DBSidebarTab(Vertical):
     self.last_columns = []
     self.last_rows = []
 
-  def _on_db_select(self, path: str) -> None:
-    self.selected_db_path = path
+  def _on_db_select(self, conn_id: str) -> None:
+    self.selected_db_path = conn_id
     label = self.query_one("#db_selected_label", Label)
-    label.update(f"Selected: {os.path.basename(path)}")
+    label.update(f"Selected: {db_manager.get_label(conn_id)}")
 
   def compose(self) -> ComposeResult:
     from components.utils.buttons import ActionButton, RunButton, AddButton
@@ -54,18 +55,18 @@ class DBSidebarTab(Vertical):
     tree.reload()
 
   def on_add_connection(self) -> None:
-    schema = [
-      {"key": "label", "label": "Label", "type": "text", "placeholder": "e.g. Production DB"},
-      {"key": "path", "label": "Path / URL", "type": "text", "required": True},
-      {"key": "type", "label": "Type", "type": "text", "placeholder": "e.g. sqlite3"},
-    ]
-
     def on_save(result: dict | None) -> None:
-      if result and result.get("path"):
-        db_manager.add_connection(result["path"], label=result.get("label"), conn_type=result.get("type"))
-        self._refresh_tree()
+      if not result:
+        return
+      fin = finalize_connection_dict(result, self.app)
+      if not fin:
+        return
+      db_manager.add_connection(connection_dict=fin)
+      self._refresh_tree()
 
-    self.app.push_screen(FormModal("Add Connection", schema=schema, callback=on_save))
+    self.app.push_screen(
+      FormModal("Add Connection", schema=connection_form_schema(None), callback=on_save),
+    )
 
   def on_popout_query(self) -> None:
     query_input = self.query_one("#db_query_input", Input)

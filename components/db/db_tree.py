@@ -1,4 +1,4 @@
-"""Database tree - connections, tables, views, triggers."""
+"""Database tree — connections, schema (SQLite) or containers (Cosmos)."""
 from typing import Any, Callable
 
 from textual.widgets import Button
@@ -10,11 +10,10 @@ from utils.icons import DB_ICON_SET, DELETE, REFRESH
 
 
 ROOT_ID = "root"
-CATEGORIES = ["table", "view", "trigger"]
 
 
 class DBTree(GenericTree):
-  """Tree of database connections with Tables/Views/Triggers."""
+  """Tree of database connections with per-type explorer children."""
 
   def __init__(self, on_select: Callable[[str], None] | None = None, icon_set: dict | None = None, **kwargs):
     super().__init__(root_node_id=ROOT_ID, icon_set=icon_set or DB_ICON_SET, **kwargs)
@@ -34,24 +33,25 @@ class DBTree(GenericTree):
       icon=self.icon("database"),
     ))
 
-    conn_paths = list(db_manager.connections.keys())
-    for i, path in enumerate(conn_paths):
-      is_last_conn = i == len(conn_paths) - 1
+    conn_ids = list(db_manager.connections.keys())
+    for i, conn_id in enumerate(conn_ids):
+      is_last_conn = i == len(conn_ids) - 1
       branch = self.LAST_BRANCH if is_last_conn else self.BRANCH
       result.append(TreeEntry(
-        node_id=path,
+        node_id=conn_id,
         indent=branch,
         is_expandable=True,
-        is_expanded=path in self._expanded,
-        display_name=db_manager.get_label(path),
+        is_expanded=conn_id in self._expanded,
+        display_name=db_manager.get_label(conn_id),
         icon=self.icon("database"),
       ))
 
-      if path in self._expanded:
+      if conn_id in self._expanded:
         ext = self.SPACER if is_last_conn else self.VERTICAL
-        for j, cat in enumerate(CATEGORIES):
-          cat_id = (path, cat)
-          is_last_cat = j == len(CATEGORIES) - 1
+        categories = db_manager.get_explorer_categories(conn_id)
+        for j, cat in enumerate(categories):
+          cat_id = (conn_id, cat)
+          is_last_cat = j == len(categories) - 1
           cat_branch = self.LAST_BRANCH if is_last_cat else self.BRANCH
           result.append(TreeEntry(
             node_id=cat_id,
@@ -68,8 +68,11 @@ class DBTree(GenericTree):
             for k, name in enumerate(names):
               is_last_item = k == len(names) - 1
               item_branch = self.LAST_BRANCH if is_last_item else self.BRANCH
-              item_id = (path, cat, name)
-              cat_icon = self.icon(cat) if cat in ("table", "view", "trigger") else self.icon("file")
+              item_id = (conn_id, cat, name)
+              if cat in ("table", "view", "trigger", "container"):
+                cat_icon = self.icon(cat)
+              else:
+                cat_icon = self.icon("file")
               result.append(TreeEntry(
                 node_id=item_id,
                 indent=ext + cat_ext + item_branch,
@@ -96,13 +99,12 @@ class DBTree(GenericTree):
 
   async def load_children_async(self, node_id: Any) -> None:
     if isinstance(node_id, tuple) and len(node_id) == 2:
-      path, category = node_id
-      if path not in db_manager.connections:
+      conn_id, category = node_id
+      if conn_id not in db_manager.connections:
         return
-      query = f"SELECT name FROM sqlite_master WHERE type='{category}' AND name NOT LIKE 'sqlite_%' ORDER BY name;"
       try:
-        cols, results = await db_manager.execute(path, query)
-        self._child_cache[node_id] = [row[0] for row in results] if results else ["None found"]
+        names = await db_manager.list_sidebar_children(conn_id, category)
+        self._child_cache[node_id] = names if names else ["None found"]
       except Exception as e:
         self._child_cache[node_id] = [f"Error: {e}"]
 

@@ -1,11 +1,9 @@
 import html
-import ipaddress
 import re
 from html.parser import HTMLParser
-from urllib.parse import urlparse
-
 import requests
 
+from utils.safe_url import validate_public_http_url
 from utils.tool import register_tool
 
 _BLOCK_TAGS = frozenset({
@@ -59,25 +57,6 @@ class _HtmlToText(HTMLParser):
     return html.unescape("".join(self._parts))
 
 
-def _validate_fetch_url(url: str) -> tuple[bool, str]:
-  parsed = urlparse(url.strip())
-  if parsed.scheme not in ("http", "https"):
-    return False, "Only http and https URLs are allowed."
-  host = parsed.hostname
-  if not host:
-    return False, "URL has no host."
-  lowered = host.lower()
-  if lowered == "localhost" or lowered.endswith(".localhost"):
-    return False, "Local hosts are not allowed."
-  try:
-    ip = ipaddress.ip_address(host)
-    if not ip.is_global:
-      return False, "Non-public IP addresses are not allowed."
-  except ValueError:
-    pass
-  return True, ""
-
-
 def _html_to_text(html_doc: str) -> str:
   cleaned = _strip_script_style(html_doc)
   parser = _HtmlToText()
@@ -98,7 +77,7 @@ def fetch_web_page_text(url: str, max_chars: int = 80000):
   Returns:
     Plain text body prefixed with the source URL, suitable for summarizing in markdown.
   """
-  ok, err = _validate_fetch_url(url)
+  ok, err = validate_public_http_url(url)
   if not ok:
     return f"Error: {err}"
 
