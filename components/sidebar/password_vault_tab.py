@@ -31,7 +31,7 @@ class PasswordVaultTab(VerticalScroll):
     if password_vault.is_unlocked():
       self._show_unlocked()
       return
-    password_vault.prompt_master_password(self.app, on_done=self._on_unlock_done)
+    password_vault.prompt_master_password(on_done=self._on_unlock_done)
 
   def _on_unlock_done(self, ok: bool) -> None:
     if ok:
@@ -43,6 +43,12 @@ class PasswordVaultTab(VerticalScroll):
   def _show_unlocked(self) -> None:
     self.query_one("#vault_locked_hint", Label).display = False
     self.query_one("#password_vault_tree", PasswordVaultTree).display = True
+    try:
+      from skills.brave_search.api import ensure_brave_search_credential_row
+
+      ensure_brave_search_credential_row()
+    except ImportError:
+      pass
     # Tree's first _refresh ran while locked (empty); reload after unlock from chat or tab.
     self._reload_tree()
 

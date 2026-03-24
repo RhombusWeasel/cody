@@ -24,6 +24,12 @@ FormModal {
   padding: 0 1;
 }
 
+/* Conditional field groups must not use 1fr height (breaks layout inside VerticalScroll). */
+#form_modal_body .form-field-conditional {
+  height: auto;
+  width: 1fr;
+}
+
 .field-label {
   height: 1;
   color: $text-muted;

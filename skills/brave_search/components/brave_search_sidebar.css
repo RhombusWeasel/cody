@@ -1,0 +1,53 @@
+BraveSearchSidebarTab {
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+}
+
+.brave-search-header {
+  height: auto;
+  width: 100%;
+  margin-bottom: 1;
+}
+
+#brave_query_input {
+  width: 1fr;
+  min-width: 0;
+}
+
+#brave_run_btn {
+  width: auto;
+}
+
+#brave_results_scroll {
+  height: 1fr;
+  min-height: 0;
+}
+
+.brave-search-error {
+  color: $error;
+}
+
+.brave-result-block {
+  width: 100%;
+  height: auto;
+  margin: 1 0;
+  padding-bottom: 1;
+}
+
+.brave-result-btn {
+  width: 100%;
+  min-width: 0;
+  height: auto;
+}
+
+.brave-result-desc {
+  height: auto;
+  color: $text-muted;
+}
+
+.brave-result-host {
+  height: auto;
+  color: $text-disabled;
+  text-style: dim;
+}

@@ -17,21 +17,34 @@ def _inject_memory_credentials_from_unlocked_vault(env: dict) -> None:
     import utils.password_vault as password_vault
   except Exception:
     return
-  if not password_vault.is_unlocked():
-    return
-  row = password_vault.get_credential_by_id(_MEMORY_VAULT_CREDENTIAL_ID)
   cfg_u = (cfg.get("memory.username") or "").strip()
   cfg_p = (cfg.get("memory.password") or "").strip()
-  vault_u, vault_p = "", ""
-  if row:
-    vault_u = (row.get("username") or "").strip()
-    vault_p = (password_vault.decrypt_password(row) or "").strip()
+  vault_u = password_vault.get_credential_username(_MEMORY_VAULT_CREDENTIAL_ID)
+  vault_p = password_vault.get_secret(_MEMORY_VAULT_CREDENTIAL_ID)
   out_u = vault_u or cfg_u
   out_p = vault_p or cfg_p
   if out_u:
     env["CODY_MEMORY_USERNAME"] = out_u
   if out_p:
     env["CODY_MEMORY_PASSWORD"] = out_p
+
+
+def _inject_brave_search_token_from_unlocked_vault(env: dict) -> None:
+  """Copy Brave Search token from unlocked vault into env for brave-search scripts."""
+  try:
+    from skills.brave_search.api import (
+      BRAVE_SEARCH_ENV_TOKEN,
+      BRAVE_SEARCH_VAULT_CREDENTIAL_ID,
+      ensure_brave_search_credential_row,
+    )
+    import utils.password_vault as password_vault
+  except Exception:
+    return
+  if password_vault.is_unlocked():
+    ensure_brave_search_credential_row()
+  token = password_vault.get_secret(BRAVE_SEARCH_VAULT_CREDENTIAL_ID)
+  if token:
+    env[BRAVE_SEARCH_ENV_TOKEN] = token
 
 
 def run_skill(skill_name: str, script_name: str, args: str = "", cwd: str = None):
@@ -85,6 +98,9 @@ def run_skill(skill_name: str, script_name: str, args: str = "", cwd: str = None
 
     if skill_name == "memory":
         _inject_memory_credentials_from_unlocked_vault(env)
+
+    if skill_name == "brave-search":
+        _inject_brave_search_token_from_unlocked_vault(env)
 
     try:
         # Do not inherit stdin: a TTY makes memory skill bootstrap call getpass and block forever.

@@ -1,9 +1,9 @@
 {
   "id": "bundled-page-summarizer",
   "name": "page_summarizer",
-  "description": "Fetches a public web page and returns a concise markdown summary for the user.",
-  "tool_groups": ["web"],
+  "description": "Summarizes public web pages (HTML) and documents (PDF, Office, etc.) from URLs or project paths into concise markdown.",
+  "tool_groups": ["web", "documents"],
   "provider": "",
   "model": "",
-  "system_prompt": "You summarize web pages for the user.\n\nWhen the task includes a URL, call fetch_web_page_text with that URL first. Use only the text returned by the tool—do not invent facts or content not supported by the fetched text.\n\nReply in markdown with:\n- A short title line (# heading)\n- The source URL as a markdown link\n- Bullet points or short sections for the main ideas\n- Note clearly if the page was empty, truncated, or the fetch failed\n\nKeep the summary focused and readable."
+  "system_prompt": "You summarize web pages and documents for the user.\n\nChoose tools:\n- For normal HTML article or blog URLs, call fetch_web_page_text first.\n- For local paths to PDF, DOCX, PPTX, images, or other rich documents, or for http(s) URLs that point to such files (or when fetch_web_page_text returns empty or obviously useless text for a URL), call read_document_markdown with that path or URL.\n\nUse only the text returned by the tool—do not invent facts or content not supported by it.\n\nReply in markdown with:\n- A short title line (# heading)\n- The source as a markdown link (for URLs) or file path in backticks\n- Bullet points or short sections for the main ideas\n- Note clearly if the content was empty, truncated, or the tool failed\n\nKeep the summary focused and readable. Any code samples should be kept fully intact and it's usage explained."
 }
