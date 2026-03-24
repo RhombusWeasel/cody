@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.widgets import TabPane
 
@@ -22,6 +23,14 @@ def pane_containing(widget: Widget) -> Pane | None:
     if isinstance(w, Pane):
       return w
   return None
+
+
+def _direct_pane_siblings(pane: Pane) -> list[Pane]:
+  """Return Pane widgets that share the same direct parent as `pane`."""
+  parent = pane.parent
+  if parent is None:
+    return []
+  return [c for c in parent.children if isinstance(c, Pane)]
 
 
 def _reparent_preserving_children(child: Widget, new_parent: Widget) -> None:
@@ -82,6 +91,13 @@ class Pane(Widget):
 
 class Workspace(Widget):
     """The root workspace container managing panes and splits."""
+
+    BINDINGS = [
+        Binding("ctrl+h", "focus_pane_left", "", show=False),
+        Binding("ctrl+l", "focus_pane_right", "", show=False),
+        Binding("ctrl+k", "focus_pane_up", "", show=False),
+        Binding("ctrl+j", "focus_pane_down", "", show=False),
+    ]
 
     active_pane: Pane | None = reactive(None)
 
@@ -180,6 +196,39 @@ class Workspace(Widget):
             await v_container.mount(new_pane)
             
         self.set_active_pane(new_pane)
+
+    def _focus_pane_sibling_delta(self, pane: Pane, delta: int) -> None:
+        siblings = _direct_pane_siblings(pane)
+        if len(siblings) < 2:
+            return
+        try:
+            idx = siblings.index(pane)
+        except ValueError:
+            return
+        new_idx = (idx + delta) % len(siblings)
+        target = siblings[new_idx]
+        self.set_active_pane(target)
+        target.focus()
+
+    def action_focus_pane_left(self) -> None:
+        if not self.active_pane or not isinstance(self.active_pane.parent, Horizontal):
+            return
+        self._focus_pane_sibling_delta(self.active_pane, -1)
+
+    def action_focus_pane_right(self) -> None:
+        if not self.active_pane or not isinstance(self.active_pane.parent, Horizontal):
+            return
+        self._focus_pane_sibling_delta(self.active_pane, 1)
+
+    def action_focus_pane_up(self) -> None:
+        if not self.active_pane or not isinstance(self.active_pane.parent, Vertical):
+            return
+        self._focus_pane_sibling_delta(self.active_pane, -1)
+
+    def action_focus_pane_down(self) -> None:
+        if not self.active_pane or not isinstance(self.active_pane.parent, Vertical):
+            return
+        self._focus_pane_sibling_delta(self.active_pane, 1)
 
     def focus_next_pane(self):
         panes = list(self.query(Pane))

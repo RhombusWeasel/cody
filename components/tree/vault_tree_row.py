@@ -2,7 +2,7 @@
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal
-from textual.widgets import Input, Label, TextArea
+from textual.widgets import Label, TextArea
 from textual.widget import Widget
 
 
@@ -44,9 +44,6 @@ class VaultSecretLineRow(Widget):
         shown = self.secret_value if self.revealed else _mask_note_body(self.secret_value)
         yield TextArea(shown, disabled=True, classes="vault-note-body")
       else:
-        yield Input(
-          self.secret_value,
-          disabled=True,
-          password=not self.revealed,
-          classes="vault-secret-input",
-        )
+        # Label avoids Input/ScrollView, which breaks tree layout when forced to height 1.
+        shown = self.secret_value if self.revealed else ("•" * len(self.secret_value))
+        yield Label(shown, classes="vault-secret-input", markup=False)
