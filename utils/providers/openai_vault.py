@@ -82,20 +82,14 @@ async def ensure_openai_api_key_for_tui(app) -> bool:
     set_cached_openai_api_key(cfg_key)
     return True
 
-  if not password_vault.is_unlocked():
-
-    def push_unlock(cb):
-      password_vault.prompt_master_password(app, on_done=cb)
-
-    unlocked = await _await_modal(app, push_unlock)
-    if not unlocked:
-      app.notify("Vault unlock cancelled.", severity="warning")
-      return False
+  unlocked = await password_vault._await_unlock()
+  if not unlocked:
+    app.notify("Vault unlock cancelled.", severity="warning")
+    return False
 
   _ensure_credential_row()
-  row = password_vault.get_credential_by_id(OPENAI_VAULT_CREDENTIAL_ID)
-  key = password_vault.decrypt_password(row) if row else ""
-  key = (key or "").strip()
+  cred = await password_vault.get_credential(OPENAI_VAULT_CREDENTIAL_ID)
+  key = cred.get("password") or ""
   if key:
     set_cached_openai_api_key(key)
     return True
@@ -119,9 +113,8 @@ async def ensure_openai_api_key_for_tui(app) -> bool:
     app.notify("OpenAI API key cannot be empty.", severity="error")
     return False
 
-  password_vault.upsert_credential(
+  password_vault.register_credential(
     OPENAI_VAULT_CREDENTIAL_ID,
-    OPENAI_VAULT_LABEL,
     OPENAI_VAULT_GROUP,
     OPENAI_VAULT_USERNAME,
     entered,

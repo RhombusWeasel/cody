@@ -1,9 +1,39 @@
 """File system operations for the file tree component."""
+import re
 import shutil
+import warnings
 from pathlib import Path
 
+from utils.cfg_man import cfg
 from utils.tree_model import TreeEntry
 from utils.icons import FOLDER, FILE, FILE_ICONS
+
+_warned_bad_exclude_patterns: set[str] = set()
+
+
+def _compiled_name_exclude_patterns() -> list[re.Pattern]:
+  raw = cfg.get("file_tree.name_exclude_patterns", [])
+  if not isinstance(raw, list):
+    return []
+  out: list[re.Pattern] = []
+  for p in raw:
+    if not isinstance(p, str) or not p.strip():
+      continue
+    try:
+      out.append(re.compile(p))
+    except re.error as e:
+      if p not in _warned_bad_exclude_patterns:
+        _warned_bad_exclude_patterns.add(p)
+        warnings.warn(
+          f"Invalid file_tree.name_exclude_patterns regex {p!r}: {e}",
+          UserWarning,
+          stacklevel=2,
+        )
+  return out
+
+
+def _name_excluded(name: str, patterns: list[re.Pattern]) -> bool:
+  return any(pat.fullmatch(name) for pat in patterns)
 
 
 def path_entries_to_tree(
@@ -51,8 +81,11 @@ def list_dir(path: Path) -> list[tuple[str, bool]]:
   """List directory contents. Returns (name, is_dir) sorted with dirs first."""
   if not path.is_dir():
     return []
+  patterns = _compiled_name_exclude_patterns()
   entries = []
   for p in path.iterdir():
+    if _name_excluded(p.name, patterns):
+      continue
     try:
       entries.append((p.name, p.is_dir()))
     except OSError:

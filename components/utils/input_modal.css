@@ -36,7 +36,13 @@ PreviewToChatModal {
   padding: 0;
 }
 
-#preview_to_chat_container .preview-to-chat-body {
+#preview_to_chat_scroll {
   height: 1fr;
   min-height: 8;
+  border: round $primary;
+  padding: 0 1;
+}
+
+#preview_to_chat_body {
+  height: auto;
 }
