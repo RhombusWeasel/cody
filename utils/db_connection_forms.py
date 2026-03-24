@@ -21,10 +21,17 @@ VAULT_GROUP = "cosmos_db"
 
 
 def connection_form_schema(args: dict | None) -> list[dict[str, Any]]:
-  """Fields for SQLite and Cosmos; visibility toggles by ``type``; ``finalize_connection_dict`` enforces by ``type``."""
+  """Fields for SQLite and Cosmos; visibility by ``type`` and Cosmos ``auth_kind``; finalize enforces both."""
   _ = args
   sw_sqlite = {"key": "type", "value": "sqlite3"}
   sw_cosmos = {"key": "type", "value": "cosmos"}
+  sw_auth_conn_str = {"key": "auth_kind", "value": "connection_string"}
+  sw_auth_rsrc_tok = {"key": "auth_kind", "value": "resource_tokens"}
+  sw_auth_acct_key = {"key": "auth_kind", "value": "account_key"}
+  sw_auth_sp = {"key": "auth_kind", "value": "client_secret"}
+  sw_auth_mi = {"key": "auth_kind", "value": "managed_identity"}
+  sw_note_auths = {"key": "auth_kind", "values": ["connection_string", "resource_tokens"]}
+  sw_cred_auths = {"key": "auth_kind", "values": ["account_key", "client_secret"]}
   return [
     {"key": "label", "label": "Label", "type": "text", "placeholder": "e.g. Production"},
     {
@@ -55,57 +62,82 @@ def connection_form_schema(args: dict | None) -> list[dict[str, Any]]:
       "key": "vault_note_id",
       "label": "Vault secure note id (optional if pasting below)",
       "type": "text",
-      "show_when": sw_cosmos,
+      "show_when_all": [sw_cosmos, sw_note_auths],
     },
     {
       "key": "vault_cred_id",
       "label": "Vault credential id (optional if pasting below)",
       "type": "text",
-      "show_when": sw_cosmos,
+      "show_when_all": [sw_cosmos, sw_cred_auths],
     },
     {
       "key": "tenant_id",
       "label": "Cosmos tenant id (client_secret auth)",
       "type": "text",
-      "show_when": sw_cosmos,
+      "show_when_all": [sw_cosmos, sw_auth_sp],
     },
     {
       "key": "managed_identity_client_id",
       "label": "User-assigned managed identity client id (optional)",
       "type": "text",
-      "show_when": sw_cosmos,
+      "show_when_all": [sw_cosmos, sw_auth_mi],
     },
     {
       "key": "inline_connection_string",
       "label": "Paste Cosmos connection string once (vault note)",
       "type": "textarea",
-      "show_when": sw_cosmos,
+      "show_when_all": [sw_cosmos, sw_auth_conn_str],
     },
     {
       "key": "inline_account_key",
       "label": "Paste Cosmos account key once (vault credential)",
       "type": "password",
-      "show_when": sw_cosmos,
+      "show_when_all": [sw_cosmos, sw_auth_acct_key],
     },
     {
       "key": "inline_resource_tokens_json",
       "label": "Paste resource tokens JSON once (vault note)",
       "type": "textarea",
-      "show_when": sw_cosmos,
+      "show_when_all": [sw_cosmos, sw_auth_rsrc_tok],
     },
     {
       "key": "inline_sp_client_id",
       "label": "Paste Entra app (client) id once",
       "type": "text",
-      "show_when": sw_cosmos,
+      "show_when_all": [sw_cosmos, sw_auth_sp],
     },
     {
       "key": "inline_sp_client_secret",
       "label": "Paste client secret once (vault credential)",
       "type": "password",
-      "show_when": sw_cosmos,
+      "show_when_all": [sw_cosmos, sw_auth_sp],
     },
   ]
+
+
+def connection_form_initial_args(conn_id: str, meta: dict[str, Any]) -> dict[str, Any]:
+  """FormModal ``args`` from ``conn_meta``; inline paste fields left empty (secrets stay in vault)."""
+  keys = (
+    "label", "type", "path", "endpoint", "database", "container", "auth_kind",
+    "vault_note_id", "vault_cred_id", "tenant_id", "managed_identity_client_id",
+  )
+  inline_keys = (
+    "inline_connection_string", "inline_account_key", "inline_resource_tokens_json",
+    "inline_sp_client_id", "inline_sp_client_secret",
+  )
+  out: dict[str, Any] = {"id": str(meta.get("id") or conn_id)}
+  ctype = str(meta.get("type", "sqlite3") or "sqlite3")
+  out["type"] = ctype
+  for k in keys:
+    if k == "type":
+      continue
+    v = meta.get(k)
+    out[k] = "" if v is None else str(v)
+  if ctype == "cosmos" and not (out.get("auth_kind") or "").strip():
+    out["auth_kind"] = "default_azure"
+  for k in inline_keys:
+    out[k] = ""
+  return out
 
 
 def finalize_connection_dict(result: dict[str, Any], app: Any) -> dict[str, Any] | None:
