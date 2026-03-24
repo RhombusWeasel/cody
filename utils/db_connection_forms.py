@@ -115,6 +115,31 @@ def connection_form_schema(args: dict | None) -> list[dict[str, Any]]:
   ]
 
 
+def connection_form_initial_args(conn_id: str, meta: dict[str, Any]) -> dict[str, Any]:
+  """FormModal ``args`` from ``conn_meta``; inline paste fields left empty (secrets stay in vault)."""
+  keys = (
+    "label", "type", "path", "endpoint", "database", "container", "auth_kind",
+    "vault_note_id", "vault_cred_id", "tenant_id", "managed_identity_client_id",
+  )
+  inline_keys = (
+    "inline_connection_string", "inline_account_key", "inline_resource_tokens_json",
+    "inline_sp_client_id", "inline_sp_client_secret",
+  )
+  out: dict[str, Any] = {"id": str(meta.get("id") or conn_id)}
+  ctype = str(meta.get("type", "sqlite3") or "sqlite3")
+  out["type"] = ctype
+  for k in keys:
+    if k == "type":
+      continue
+    v = meta.get(k)
+    out[k] = "" if v is None else str(v)
+  if ctype == "cosmos" and not (out.get("auth_kind") or "").strip():
+    out["auth_kind"] = "default_azure"
+  for k in inline_keys:
+    out[k] = ""
+  return out
+
+
 def finalize_connection_dict(result: dict[str, Any], app: Any) -> dict[str, Any] | None:
   ctype = (result.get("type") or "sqlite3").strip() or "sqlite3"
   out: dict[str, Any] = {"type": ctype}

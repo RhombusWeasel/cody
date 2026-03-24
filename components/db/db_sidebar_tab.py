@@ -11,7 +11,11 @@ from components.db.results_modal import ResultsModal
 from components.db.db_tree import DBTree
 from utils.cfg_man import cfg
 from utils.db import db_manager
-from utils.db_connection_forms import connection_form_schema, finalize_connection_dict
+from utils.db_connection_forms import (
+  connection_form_initial_args,
+  connection_form_schema,
+  finalize_connection_dict,
+)
 from utils.icons import EXPORT_CSV, OPEN_EXTERNAL, RUN
 
 
@@ -33,7 +37,11 @@ class DBSidebarTab(Vertical):
     from components.utils.buttons import ActionButton, RunButton, AddButton
     with VerticalScroll(id="db_tree_container"):
       yield AddButton(action=self.on_add_connection, label="Add Connection", id="btn_add_db_conn", variant="primary")
-      yield DBTree(id="db_tree", on_select=self._on_db_select)
+      yield DBTree(
+        id="db_tree",
+        on_select=self._on_db_select,
+        on_edit_connection=self.on_edit_connection,
+      )
 
     with Vertical(id="db_query_pane"):
       yield Label("No database selected", id="db_selected_label")
@@ -67,6 +75,40 @@ class DBSidebarTab(Vertical):
     self.app.push_screen(
       FormModal("Add Connection", schema=connection_form_schema(None), callback=on_save),
     )
+
+  def on_edit_connection(self, conn_id: str) -> None:
+    proj = db_manager.get_project_db_path()
+    try:
+      same_proj = os.path.normcase(os.path.normpath(os.path.abspath(conn_id))) == os.path.normcase(
+        os.path.normpath(os.path.abspath(proj))
+      )
+    except OSError:
+      same_proj = conn_id == proj
+    if same_proj:
+      self.app.notify("Cannot edit the built-in Cody Data database.", severity="warning")
+      return
+    meta = db_manager.conn_meta.get(conn_id)
+    if not meta:
+      self.app.notify("Connection not found.", severity="error")
+      return
+    args = connection_form_initial_args(conn_id, meta)
+    schema = connection_form_schema(args)
+
+    def on_save(result: dict | None) -> None:
+      if not result:
+        return
+      fin = finalize_connection_dict(result, self.app)
+      if not fin:
+        return
+      new_id = db_manager.update_saved_connection(conn_id, fin)
+      if new_id is None:
+        self.app.notify("Could not update connection in config.", severity="error")
+        return
+      self._refresh_tree()
+      if self.selected_db_path == conn_id:
+        self._on_db_select(new_id)
+
+    self.app.push_screen(FormModal("Edit Connection", schema=schema, args=args, callback=on_save))
 
   def on_popout_query(self) -> None:
     query_input = self.query_one("#db_query_input", Input)

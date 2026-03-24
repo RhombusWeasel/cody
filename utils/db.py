@@ -279,6 +279,34 @@ class DatabaseManager:
       if save:
         self._save_connections()
 
+  def update_saved_connection(self, old_conn_id: str, connection_dict: dict) -> str | None:
+    """Replace one entry in ``db.connections`` and reload. Returns new id, or ``None`` if blocked / missing."""
+    proj = self.get_project_db_path()
+    if old_conn_id == proj:
+      return None
+    lst = cfg.get("db.connections", [])
+    if not isinstance(lst, list):
+      return None
+    idx = None
+    for i, raw in enumerate(lst):
+      if isinstance(raw, str):
+        rid = raw.strip()
+      elif isinstance(raw, dict):
+        rid = str(raw.get("id") or raw.get("path") or "").strip()
+      else:
+        continue
+      if rid == old_conn_id:
+        idx = i
+        break
+    if idx is None:
+      return None
+    new_lst = list(lst)
+    new_lst[idx] = connection_dict
+    cfg.set("db.connections", new_lst)
+    cfg.changed = False
+    self.reload_from_config()
+    return str(connection_dict.get("id") or connection_dict.get("path") or old_conn_id)
+
   def _serialize_connection_entry(self, conn_id: str) -> dict:
     meta = dict(self.conn_meta.get(conn_id, {}))
     ctype = meta.get("type", "sqlite3")
