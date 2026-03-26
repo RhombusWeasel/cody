@@ -34,7 +34,7 @@ class Sidebar(VerticalScroll):
         with TabbedContent(classes="sidebar-tabbed-content"):
             with TabPane(icons.CHATS, id="tab-chats", classes="tabbed-content-label"):
                 yield ChatHistoryTab()
-            with TabPane(icons.FILE_SYSTEM, id="tab-fs", classes="tabbed-content-label"):
+            with TabPane(icons.FOLDER, id="tab-fs", classes="tabbed-content-label"):
                 yield FileTreeTab()
             with TabPane(icons.SKILLS, id="tab-tools", classes="tabbed-content-label"):
                 yield ToolList()
