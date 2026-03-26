@@ -47,8 +47,8 @@ class DBSidebarTab(Vertical):
       yield Label("No database selected", id="db_selected_label")
       with Horizontal(id="db_query_input_container"):
         yield Input(placeholder="Enter SQL query...", id="db_query_input")
-        yield ActionButton(OPEN_EXTERNAL, action=self.on_popout_query, id="btn_popout_query", tooltip="Open Query Editor", classes="action-btn icon-btn")
-        yield RunButton(action=self.on_run_query, id="btn_run_query", tooltip="Run Query", classes="action-btn icon-btn")
+        yield ActionButton(OPEN_EXTERNAL, action=self.on_popout_query, id="btn_popout_query", tooltip="Open Query Editor", classes="icon-btn top-pad")
+        yield RunButton(action=self.on_run_query, id="btn_run_query", tooltip="Run Query", classes="icon-btn top-pad")
       with Horizontal(id="db_results_header"):
         yield Label("Results:")
         yield ActionButton(OPEN_EXTERNAL, action=self.on_popout_results, id="btn_popout_results", tooltip="Open Results Pane", classes="action-btn icon-btn")

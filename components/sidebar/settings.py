@@ -23,6 +23,17 @@ SECTION_ICONS: dict[str, str] = {
     "db":         icons.DB,
 }
 
+# Short UI labels for long config keys (leaf rows only)
+_LEAF_LABEL_SHORT: dict[str, str] = {
+    "managed_identity_client_id": "MI client id",
+    "vault_note_id": "Vault note id",
+    "vault_cred_id": "Vault cred id",
+    "api_key": "API key",
+    "working_directory": "Work dir",
+    "show_system_messages": "Sys messages",
+    "sidebar_open_on_start": "Sidebar on start",
+}
+
 
 def _is_password_field(path: str) -> bool:
     key = path.split('.')[-1].lower()
@@ -103,12 +114,15 @@ class SettingsTree(GenericTree):
                     else:
                         self._walk_list(val, node_path, ancestors_last + [is_last], entries)
             else:
+                leaf_label = _LEAF_LABEL_SHORT.get(
+                    str(key), str(key).replace('_', ' ')
+                )
                 entries.append(TreeEntry(
                     node_id=node_path,
                     indent=indent + branch,
                     is_expandable=False,
                     is_expanded=False,
-                    display_name=str(key).replace('_', ' '),
+                    display_name=leaf_label,
                     icon=icons.FILE,
                 ))
 

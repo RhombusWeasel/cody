@@ -25,12 +25,44 @@ def pane_containing(widget: Widget) -> Pane | None:
   return None
 
 
-def _direct_pane_siblings(pane: Pane) -> list[Pane]:
-  """Return Pane widgets that share the same direct parent as `pane`."""
-  parent = pane.parent
-  if parent is None:
-    return []
-  return [c for c in parent.children if isinstance(c, Pane)]
+def _horizontal_row_columns(row: Horizontal) -> list[list[Pane]]:
+  """Columns of a row split: each child is one column (Pane or subtree with panes)."""
+  columns: list[list[Pane]] = []
+  for child in row.children:
+    if isinstance(child, Pane):
+      col = [child]
+    else:
+      col = list(child.query(Pane))
+    if col:
+      columns.append(col)
+  return columns
+
+
+def _pane_row_column_index(columns: list[list[Pane]], pane: Pane) -> int | None:
+  for i, col in enumerate(columns):
+    if pane in col:
+      return i
+  return None
+
+
+def _vertical_stack_rows(stack: Vertical) -> list[list[Pane]]:
+  """Rows of a vertical stack: each child is one band (Pane or subtree with panes)."""
+  rows: list[list[Pane]] = []
+  for child in stack.children:
+    if isinstance(child, Pane):
+      band = [child]
+    else:
+      band = list(child.query(Pane))
+    if band:
+      rows.append(band)
+  return rows
+
+
+def _pane_stack_row_index(rows: list[list[Pane]], pane: Pane) -> int | None:
+  for i, band in enumerate(rows):
+    if pane in band:
+      return i
+  return None
 
 
 def _reparent_preserving_children(child: Widget, new_parent: Widget) -> None:
@@ -197,38 +229,97 @@ class Workspace(Widget):
             
         self.set_active_pane(new_pane)
 
-    def _focus_pane_sibling_delta(self, pane: Pane, delta: int) -> None:
-        siblings = _direct_pane_siblings(pane)
-        if len(siblings) < 2:
+    def _focus_pane_horizontal_across_rows(self, pane: Pane, delta: int) -> None:
+        """Move across row columns (side-by-side); walk up at column edges; wrap within innermost row if needed."""
+        horizontals: list[Horizontal] = []
+        node = pane.parent
+        while node is not None:
+            if isinstance(node, Horizontal):
+                horizontals.append(node)
+            node = node.parent
+
+        for h in horizontals:
+            columns = _horizontal_row_columns(h)
+            if len(columns) < 2:
+                continue
+            col_idx = _pane_row_column_index(columns, pane)
+            if col_idx is None:
+                continue
+            new_idx = col_idx + delta
+            if 0 <= new_idx < len(columns):
+                target = columns[new_idx][0]
+                self.set_active_pane(target)
+                target.focus()
+                return
+
+        for h in horizontals:
+            columns = _horizontal_row_columns(h)
+            if len(columns) < 2:
+                continue
+            col_idx = _pane_row_column_index(columns, pane)
+            if col_idx is None:
+                continue
+            new_idx = (col_idx + delta) % len(columns)
+            target = columns[new_idx][0]
+            self.set_active_pane(target)
+            target.focus()
             return
-        try:
-            idx = siblings.index(pane)
-        except ValueError:
+
+    def _focus_pane_vertical_across_stacks(self, pane: Pane, delta: int) -> None:
+        """Move across vertical stack bands; walk up at edges; wrap innermost stack if needed."""
+        verticals: list[Vertical] = []
+        node = pane.parent
+        while node is not None:
+            if isinstance(node, Vertical):
+                verticals.append(node)
+            node = node.parent
+
+        for v in verticals:
+            rows = _vertical_stack_rows(v)
+            if len(rows) < 2:
+                continue
+            row_idx = _pane_stack_row_index(rows, pane)
+            if row_idx is None:
+                continue
+            new_idx = row_idx + delta
+            if 0 <= new_idx < len(rows):
+                target = rows[new_idx][0]
+                self.set_active_pane(target)
+                target.focus()
+                return
+
+        for v in verticals:
+            rows = _vertical_stack_rows(v)
+            if len(rows) < 2:
+                continue
+            row_idx = _pane_stack_row_index(rows, pane)
+            if row_idx is None:
+                continue
+            new_idx = (row_idx + delta) % len(rows)
+            target = rows[new_idx][0]
+            self.set_active_pane(target)
+            target.focus()
             return
-        new_idx = (idx + delta) % len(siblings)
-        target = siblings[new_idx]
-        self.set_active_pane(target)
-        target.focus()
 
     def action_focus_pane_left(self) -> None:
-        if not self.active_pane or not isinstance(self.active_pane.parent, Horizontal):
+        if not self.active_pane:
             return
-        self._focus_pane_sibling_delta(self.active_pane, -1)
+        self._focus_pane_horizontal_across_rows(self.active_pane, -1)
 
     def action_focus_pane_right(self) -> None:
-        if not self.active_pane or not isinstance(self.active_pane.parent, Horizontal):
+        if not self.active_pane:
             return
-        self._focus_pane_sibling_delta(self.active_pane, 1)
+        self._focus_pane_horizontal_across_rows(self.active_pane, 1)
 
     def action_focus_pane_up(self) -> None:
-        if not self.active_pane or not isinstance(self.active_pane.parent, Vertical):
+        if not self.active_pane:
             return
-        self._focus_pane_sibling_delta(self.active_pane, -1)
+        self._focus_pane_vertical_across_stacks(self.active_pane, -1)
 
     def action_focus_pane_down(self) -> None:
-        if not self.active_pane or not isinstance(self.active_pane.parent, Vertical):
+        if not self.active_pane:
             return
-        self._focus_pane_sibling_delta(self.active_pane, 1)
+        self._focus_pane_vertical_across_stacks(self.active_pane, 1)
 
     def focus_next_pane(self):
         panes = list(self.query(Pane))

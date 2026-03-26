@@ -18,15 +18,33 @@ SettingsTree {
   width: 100%;
 }
 
-.settings-input {
-  width: 45%;
+/* Keep settings rows inside the narrow sidebar: label shrinks with ellipsis, actions capped */
+SettingsTree TreeRow > Horizontal {
+  width: 100%;
+  min-width: 0;
+}
+
+SettingsTree .tree-label {
+  min-width: 0;
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+}
+
+SettingsTree .tree-row-actions {
+  min-width: 0;
+  max-width: 50%;
+}
+
+SettingsTree .settings-input {
+  width: 1fr;
+  min-width: 8;
   height: 1;
   border: none;
   background: $panel;
   padding: 0 1;
 }
 
-.settings-input:focus {
+SettingsTree .settings-input:focus {
   border: none;
   background: $panel-lighten-1;
 }

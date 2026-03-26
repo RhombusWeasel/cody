@@ -1,81 +1,18 @@
-import html
-import re
-from html.parser import HTMLParser
 import requests
 
+from utils.html_markdown import html_to_markdown
 from utils.safe_url import validate_public_http_url
 from utils.tool import register_tool
-
-_BLOCK_TAGS = frozenset({
-  "address", "article", "aside", "blockquote", "br", "caption", "dd", "div", "dt",
-  "fieldset", "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6",
-  "header", "hr", "li", "main", "nav", "p", "pre", "section", "table", "tbody", "td",
-  "tfoot", "th", "thead", "title", "tr",
-})
-_SKIP_TAGS = frozenset({"script", "style", "noscript"})
-
-
-def _strip_script_style(raw: str) -> str:
-  out = re.sub(r"<script\b[^>]*>[\s\S]*?</script>", "", raw, flags=re.I)
-  out = re.sub(r"<style\b[^>]*>[\s\S]*?</style>", "", out, flags=re.I)
-  return out
-
-
-class _HtmlToText(HTMLParser):
-  def __init__(self):
-    super().__init__(convert_charrefs=True)
-    self._parts: list[str] = []
-    self._skip_depth = 0
-
-  def handle_starttag(self, tag, attrs):
-    t = tag.lower()
-    if t in _SKIP_TAGS:
-      self._skip_depth += 1
-      return
-    if self._skip_depth:
-      return
-    if t in _BLOCK_TAGS:
-      self._parts.append("\n")
-
-  def handle_endtag(self, tag):
-    t = tag.lower()
-    if t in _SKIP_TAGS and self._skip_depth:
-      self._skip_depth -= 1
-      return
-    if self._skip_depth:
-      return
-    if t in _BLOCK_TAGS:
-      self._parts.append("\n")
-
-  def handle_data(self, data):
-    if self._skip_depth:
-      return
-    if data.strip():
-      self._parts.append(data)
-
-  def get_text(self) -> str:
-    return html.unescape("".join(self._parts))
-
-
-def _html_to_text(html_doc: str) -> str:
-  cleaned = _strip_script_style(html_doc)
-  parser = _HtmlToText()
-  parser.feed(cleaned)
-  parser.close()
-  text = parser.get_text()
-  text = re.sub(r"[ \t]+\n", "\n", text)
-  text = re.sub(r"\n{3,}", "\n\n", text)
-  return text.strip()
 
 
 def fetch_web_page_text(url: str, max_chars: int = 80000):
   """
-  Fetches a public web page over HTTP(S) and returns extracted plain text for summarization.
+  Fetches a public web page over HTTP(S) and returns the body as Markdown for summarization.
   Args:
     url: Full http or https URL to fetch.
-    max_chars: Maximum characters of extracted text to return (longer pages are truncated).
+    max_chars: Maximum characters of markdown body to return (longer pages are truncated).
   Returns:
-    Plain text body prefixed with the source URL, suitable for summarizing in markdown.
+    Markdown body prefixed with the source URL and content type, suitable for summarization.
   """
   ok, err = validate_public_http_url(url)
   if not ok:
@@ -96,14 +33,11 @@ def fetch_web_page_text(url: str, max_chars: int = 80000):
   except requests.RequestException as e:
     return f"Error fetching URL: {e}"
 
-  text = _html_to_text(raw)
-  if not text:
-    text = "(No text could be extracted from the response.)"
+  body = html_to_markdown(raw, max_chars=max_chars)
+  if body.startswith("Error:"):
+    return body
 
   header = f"Source: {url}\nContent-Type: {resp.headers.get('Content-Type', 'unknown')}\n\n"
-  body = text
-  if len(body) > max_chars:
-    body = body[:max_chars] + f"\n\n[Truncated at {max_chars} characters]"
   return header + body
 
 
