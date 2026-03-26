@@ -12,12 +12,12 @@ DBSidebarTab {
 }
 #db_query_input_container {
     height: auto;
-    width: 100%;
+    width: 1fr;
     margin-bottom: 1;
 }
 #db_results_header {
     height: auto;
-    width: 1fr;
+    width: 100%;
     align: left middle;
     margin-bottom: 1;
 }
@@ -30,6 +30,14 @@ DBSidebarTab {
     width: auto;
     height: 1;
 }
+
+.top-pad {
+    margin: 1 1 0 1;
+    padding: 0;
+    color: $text;
+    align: right middle;
+}
+
 #db_selected_label {
     text-style: bold;
     margin-bottom: 1;
