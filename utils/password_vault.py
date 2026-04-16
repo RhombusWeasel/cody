@@ -32,6 +32,8 @@ SESSION_KEY: bytes | None = None
 _DATA: dict[str, Any] | None = None
 _vault_session_clear_hooks: list[Callable[[], None]] = []
 _tui_app: Any | None = None
+# Concurrent prompt_master_password callers share one InputModal; callbacks run when it completes.
+_unlock_waiters: list[Callable[[bool], None]] = []
 
 _CRED = "credentials"
 _NOTE = "notes"
@@ -72,6 +74,11 @@ def clear_session_key() -> None:
   try:
     from utils.providers.openai_vault import clear_openai_api_key_cache
     clear_openai_api_key_cache()
+  except ImportError:
+    pass
+  try:
+    from utils.providers.ollama_vault import clear_ollama_api_key_cache
+    clear_ollama_api_key_cache()
   except ImportError:
     pass
   for hook in _vault_session_clear_hooks:
@@ -380,6 +387,17 @@ async def get_secure_note(secure_note_name: str) -> str:
   return _read_note_plain(secure_note_name)
 
 
+def _flush_unlock_waiters(ok: bool) -> None:
+  global _unlock_waiters
+  waiters = list(_unlock_waiters)
+  _unlock_waiters.clear()
+  for cb in waiters:
+    try:
+      cb(ok)
+    except Exception:
+      pass
+
+
 def prompt_master_password(
   app=None,
   *,
@@ -398,21 +416,25 @@ def prompt_master_password(
     on_done(False)
     return
 
+  _unlock_waiters.append(on_done)
+  if len(_unlock_waiters) > 1:
+    return
+
   creating = create_mode if create_mode is not None else not is_file_present()
   title = "Create master password" if creating else "Unlock password vault"
 
   def on_modal_result(pw: str | None) -> None:
     if pw is None:
-      on_done(False)
+      _flush_unlock_waiters(False)
       return
     if not pw:
       app.notify("Password cannot be empty.", severity="error")
-      on_done(False)
+      _flush_unlock_waiters(False)
       return
     if try_unlock(pw):
-      on_done(True)
+      _flush_unlock_waiters(True)
     else:
       app.notify("Wrong password or corrupted vault.", severity="error")
-      on_done(False)
+      _flush_unlock_waiters(False)
 
   app.push_screen(InputModal(title, password=True), on_modal_result)

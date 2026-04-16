@@ -9,7 +9,8 @@ How to add behavior, agent capabilities, and UI without forking core code. For a
 | Specialized instructions + optional scripts | **Skills** (`SKILL.md`) | Loaded progressively via `activate_skill` / `run_skill`; keeps the default tool surface small. |
 | Always-on LLM function the model can call every turn | **Tools** (`.py` in tiered `tools/`) | Bypasses progressive skill loading; use sparingly (docstrings matter for schemas). |
 | User-triggered chat actions (`/foo`) | **Slash commands** (`CommandBase` in `$CODY_DIR/cmd/` and optional `<skill-dir>/cmd/`) | Chat-local UX, not necessarily exposed as LLM tools. |
-| Extra sidebar tab or leader-menu chords for a skill | **Skill hooks** (`components/sidebar_tab.py`, `components/leader_menu.py`, optional CSS) | Discovered from the skill’s directory; no edit to `main.py`. |
+| Extra **sidebar** tab or leader-menu chords for a skill | **Skill hooks** (`components/sidebar_tab.py`, `components/leader_menu.py`, optional CSS) | Discovered from the skill’s directory; no edit to `main.py`. Sidebar is the left strip, not the center workspace. |
+| Custom **workspace** tab (center pane, next to chat/editor) | **`TabPane` + [`Workspace.add_tab`](../components/workspace/workspace.py)** | No skill discovery hook yet; you wire `add_tab` yourself (see below). Skill CSS under `<skill-dir>/components/**/*.css` still applies if the widget uses matching selectors. |
 | Look and feel | **Themes** (`.py` in tiered `themes/`) | `discover_themes()` + `theme` export. |
 | Encrypted user secrets (passwords, API keys, notes) | **[`utils/password_vault.py`](../utils/password_vault.py)** | Procedures: [password_vault.md](password_vault.md). |
 
@@ -64,13 +65,30 @@ flowchart TD
 | What | Where (default tiers) | Contract | Loaded by | Notes |
 |------|------------------------|----------|-----------|-------|
 | Skill | `<skill-dir>/SKILL.md` (+ optional `scripts/`) | YAML frontmatter: `name`, `description`; markdown body | [`utils/skills.py`](../utils/skills.py) `SkillManager.discover_skills` | Optional per-skill enable map: `skills.enabled` in config. |
-| Skill sidebar tab | `<skill-dir>/components/sidebar_tab.py` | `sidebar_label: str`; `get_sidebar_widget()` or `SidebarWidget` class; optional `sidebar_tooltip` | [`utils/skill_components.py`](../utils/skill_components.py) `discover_sidebar_tabs` | |
+| Skill sidebar tab | `<skill-dir>/components/sidebar_tab.py` | `sidebar_label: str`; `get_sidebar_widget()` or `SidebarWidget` class; optional `sidebar_tooltip` | [`utils/skill_components.py`](../utils/skill_components.py) `discover_sidebar_tabs` | Adds a **left sidebar** `TabPane`, not a workspace tab. |
 | Skill leader menu | `<skill-dir>/components/leader_menu.py` | `def register_leader(reg):` using `reg.add_submenu` / `reg.add_action` | [`utils/leader_registry.py`](../utils/leader_registry.py) `discover_leader_entries` | |
 | Skill CSS | `<skill-dir>/components/**/*.css` | Valid Textual CSS | [`main.py`](../main.py) merges paths after scanning `components/` | Walks only `components/` under the skill. |
 | Agent tool | Tiered `tools/**/*.py` | At import: `register_tool("name", fn, tags=[...])`; callable needs usable docstring for OpenAI schema | [`utils/fs.py`](../utils/fs.py) `load_folder` from [`main.py`](../main.py) | Passed to the model when enabled; favor skills for heavy guidance. |
 | Skill tool | `<skill-dir>/tools/**/*.py` | Same contract as tiered tools; `register_tool` at import | [`utils/fs.py`](../utils/fs.py) `load_folder` on each path from [`skill_tools_directory_paths`](../utils/skills.py) in [`main.py`](../main.py) (and [`skills/agents/scripts/run_agent.py`](../skills/agents/scripts/run_agent.py)) | Keeps tools next to the skill; respects `skills.enabled`. |
 | Slash command | `$CODY_DIR/cmd/` + optional `<skill-dir>/cmd/` (see tier table); optional extra dirs via `commands.directories` | One subclass of `CommandBase` per module (`async def execute(self, app, args)`) | [`utils/cmd_loader.py`](../utils/cmd_loader.py) `load_commands` | Module filename → command name (first `CommandBase` wins in file). |
 | Theme | Tiered `themes/*.py` | Module attribute `theme` (Textual theme object with `.name`) | [`utils/theme_man.py`](../utils/theme_man.py) `discover_themes` | Theme dirs from `resolved_theme_paths()` in [`utils/paths.py`](../utils/paths.py). |
+
+## Workspace tabs (center pane)
+
+The main editor area is a [`Workspace`](../components/workspace/workspace.py): one or more **Pane** widgets, each with a [`TabContainer`](../components/tabs/tab_container.py) of Textual **`TabPane`** children. Chats use [`ChatTab`](../components/chat/chat.py); file edits use [`EditorTab`](../components/workspace/editor_tab.py).
+
+**API:** `await workspace.add_tab(tab: TabPane, set_active=True)` adds to the **currently active** pane (see `Workspace.add_tab` / `Pane.add_tab` in [`workspace.py`](../components/workspace/workspace.py)). Implement a subclass of `TabPane`, put your widgets in `compose()`, give a stable `id=` if you need to focus or dedupe tabs.
+
+**Wiring (pick one):**
+
+- **Leader menu** — Use [`LeaderRegistrar`](../utils/leader_registry.py) (`reg.add_action`, …) from a skill’s `<skill-dir>/components/leader_menu.py` (loaded via `discover_leader_entries()`): async handler with `ws = app.query_one(Workspace)` then `await ws.add_tab(...)`.
+- **Slash command** — `CommandBase.execute` receives `app`; same `query_one(Workspace)` + `await add_tab`.
+- **Sidebar / custom event** — Post a message from a sidebar widget and handle it on `TuiApp` like [`ChatHistoryTab.ChatSelected`](../main.py) (focus existing tab or `add_tab`).
+- **Startup** — Rare; `TuiApp.on_mount` in [`main.py`](../main.py) already opens an initial chat via `action_new_chat_tab`.
+
+**Threading:** `add_tab` must run on the Textual loop. From a worker thread, schedule onto the app (see [`utils/editors.py`](../utils/editors.py) `open_in_workspace` using `call_later` / `call_from_thread`).
+
+There is **no** automatic “register my workspace tab from `SKILL.md`” path; extend discovery in core if you want that.
 
 ## Slash commands: preview then add to chat
 

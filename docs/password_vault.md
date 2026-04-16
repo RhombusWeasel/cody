@@ -27,7 +27,7 @@ In-process code that **cannot** `await` (e.g. sync provider resolution) should o
 ## Master password without async
 
 - **`try_unlock(password: str) -> bool`** — when you already have the master password string (e.g. tests). Creates the vault file if none exists.
-- **`prompt_master_password(on_done=..., app=None)`** — modal unlock; uses **`init_vault`**’s app when **`app`** is omitted.
+- **`prompt_master_password(on_done=..., app=None)`** — modal unlock; uses **`init_vault`**’s app when **`app`** is omitted. If several callers run while the vault is still locked (e.g. multiple sidebars on startup), they share **one** unlock modal; every **`on_done`** runs with the same success or failure when that modal completes.
 
 ## Session clear hooks
 

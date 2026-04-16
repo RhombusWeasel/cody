@@ -29,6 +29,7 @@ cfg.set('session.working_directory', args.working_directory)
 from textual import on
 from textual.app import App
 from components.chat.chat import ChatTab, MsgBox
+from components.workspace.open_workspace_tab import OpenWorkspaceTab
 from components.workspace.workspace import Workspace, pane_containing
 from textual.widgets import Header, Footer, Button, TabbedContent, TabPane
 from components.sidebar.wrapper import Sidebar
@@ -154,6 +155,22 @@ class TuiApp(App):
                 return
         chat_data = await db_manager.get_chat(event.chat_id)
         await workspace.add_tab(ChatTab(cfg, chat_id=event.chat_id, chat_data=chat_data, title=event.title))
+
+  @on(OpenWorkspaceTab)
+  async def handle_open_workspace_tab(self, event: OpenWorkspaceTab):
+    workspace = self.query_one(Workspace)
+    tab = event.tab
+    tid = getattr(tab, 'id', None) or None
+    if tid:
+      for existing in workspace.query(TabPane):
+        if existing.id == tid:
+          pane = pane_containing(existing)
+          if pane is None:
+            return
+          workspace.set_active_pane(pane)
+          pane.tabs.active = tid
+          return
+    await workspace.add_tab(tab, set_active=True)
 
   def action_toggle_visible(self, id):
     visibility[id] = not visibility[id]

@@ -3,6 +3,7 @@ import json
 from ollama import Client
 from utils.cfg_man import cfg
 from utils.providers.base import ChatResponse, Message, ToolCall as ProviderToolCall
+from utils.providers.ollama_vault import resolve_ollama_api_key
 
 
 def _tool_call_to_ollama_dict(tc):
@@ -44,7 +45,14 @@ class OllamaProvider:
     host = raw.strip() if isinstance(raw, str) else str(raw)
     if not host:
       host = "http://127.0.0.1:11434"
-    self._client = Client(host=host)
+    api_key = resolve_ollama_api_key()
+    if api_key:
+      self._client = Client(
+        host=host,
+        headers={"Authorization": f"Bearer {api_key}"},
+      )
+    else:
+      self._client = Client(host=host)
 
   def chat(
     self,

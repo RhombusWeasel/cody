@@ -174,15 +174,45 @@ class MsgBox(Widget):
     await self.save_chat()
     self._refresh_chat_history()
 
+  async def _abort_agent_response_ollama(
+    self,
+    user_text: str,
+    placeholder_id: str,
+    git_checkpoint: str | None,
+    len_before: int,
+  ) -> None:
+    user_msg = {"role": "user", "content": user_text}
+    if git_checkpoint:
+      user_msg["git_checkpoint"] = git_checkpoint
+    self.actor.msg.append(user_msg)
+    self.actor.msg.append({
+      "role": "assistant",
+      "content": (
+        "Ollama Cloud setup was cancelled or failed. Unlock the password vault and add an API key "
+        "under providers / Ollama API Key, set providers.ollama.api_key in settings, "
+        "or set OLLAMA_API_KEY."
+      ),
+    })
+    base_messages = [dict(m) for m in self.messages if m.get("id") != placeholder_id]
+    self._sync_messages_from_actor(len_before, placeholder_id, base_messages, pending_loading=False)
+    await self.save_chat()
+    self._refresh_chat_history()
+
   async def get_agent_response(self, user_text: str, placeholder_id: str, git_checkpoint: str | None = None) -> None:
     from utils.tool import execute_tool
     from utils.providers.openai_vault import ensure_openai_api_key_for_tui
+    from utils.providers.ollama_vault import ensure_ollama_api_key_for_tui
 
     len_before = len(self.actor.msg)
 
     if cfg.get("session.provider", "").lower() == "openai":
       if not await ensure_openai_api_key_for_tui(self.app):
         await self._abort_agent_response_openai(user_text, placeholder_id, git_checkpoint, len_before)
+        return
+
+    if cfg.get("session.provider", "").lower() == "ollama":
+      if not await ensure_ollama_api_key_for_tui(self.app):
+        await self._abort_agent_response_ollama(user_text, placeholder_id, git_checkpoint, len_before)
         return
 
     user_msg = {"role": "user", "content": user_text}
@@ -196,6 +226,7 @@ class MsgBox(Widget):
         resp = await asyncio.to_thread(self.actor.get_response, "")
       except Exception as e:
         from openai import AuthenticationError
+        from ollama import ResponseError
 
         if isinstance(e, AuthenticationError) and cfg.get("session.provider", "").lower() == "openai":
           from utils.providers.openai_vault import clear_openai_api_key_cache
@@ -205,6 +236,20 @@ class MsgBox(Widget):
             "OpenAI authentication failed (invalid or expired API key). "
             "Fix providers.openai.api_key in settings, add a key in the Password Vault, "
             "or set OPENAI_API_KEY in the environment.",
+          )
+          break
+        if (
+          isinstance(e, ResponseError)
+          and getattr(e, "status_code", None) in (401, 403)
+          and cfg.get("session.provider", "").lower() == "ollama"
+        ):
+          from utils.providers.ollama_vault import clear_ollama_api_key_cache
+          clear_ollama_api_key_cache()
+          self.actor.add_msg(
+            "assistant",
+            "Ollama authentication failed (invalid or expired API key). "
+            "Fix providers.ollama.api_key, add a key in the Password Vault (providers / Ollama API Key), "
+            "or set OLLAMA_API_KEY.",
           )
           break
         raise

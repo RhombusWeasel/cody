@@ -8,6 +8,7 @@ register_default_config({
   "providers": {
     "ollama": {
       "base_url": "http://127.0.0.1:11434",
+      "api_key": "",
       "model": "qwen3-coder:30b",
       "opts": {
         "num_ctx": 16384,
