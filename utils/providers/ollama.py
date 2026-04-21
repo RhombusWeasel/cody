@@ -41,11 +41,30 @@ def _messages_for_ollama_client(messages: list[dict]) -> list[dict]:
 
 class OllamaProvider:
   def __init__(self):
+    # Lazy initialization - don't create client until needed
+    # This allows resolve_ollama_api_key() to work after vault unlock
+    self._client = None
+    self._host_cache = None
+    self._api_key_cache = None
+  
+  def _get_client(self):
+    """Get or create the Ollama client, resolving API key if needed."""
+    # Check if we need to re-resolve the API key (vault may have been unlocked)
     raw = cfg.get("providers.ollama.base_url") or ""
     host = raw.strip() if isinstance(raw, str) else str(raw)
     if not host:
       host = "http://127.0.0.1:11434"
+    
     api_key = resolve_ollama_api_key()
+    
+    # If client exists and nothing changed, reuse it
+    if self._client is not None:
+      if self._host_cache == host and self._api_key_cache == api_key:
+        return self._client
+      # Something changed (vault unlocked, key changed), recreate client
+      self._client = None
+    
+    # Create new client
     if api_key:
       self._client = Client(
         host=host,
@@ -53,6 +72,10 @@ class OllamaProvider:
       )
     else:
       self._client = Client(host=host)
+    
+    self._host_cache = host
+    self._api_key_cache = api_key
+    return self._client
 
   def chat(
     self,
@@ -61,6 +84,7 @@ class OllamaProvider:
     tools: list | None = None,
     options: dict | None = None,
   ) -> ChatResponse:
+    client = self._get_client()  # Lazy init here, after vault unlock
     kwargs = {
       "model": model,
       "messages": _messages_for_ollama_client(messages),
@@ -68,7 +92,7 @@ class OllamaProvider:
     }
     if tools:
       kwargs["tools"] = tools
-    resp = self._client.chat(**kwargs)
+    resp = client.chat(**kwargs)
     tool_calls = None
     if resp.message.tool_calls:
       tool_calls = [
