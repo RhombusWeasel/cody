@@ -43,6 +43,11 @@ def clear_ollama_api_key_cache() -> None:
 
 def resolve_ollama_api_key() -> str | None:
   """Session cache, then config, vault (if unlocked), then OLLAMA_API_KEY."""
+  # Only use API key if connecting to ollama.com cloud
+  base = cfg.get("providers.ollama.base_url") or ""
+  if not ollama_base_url_is_cloud(base):
+    return None
+  
   cached = get_cached_ollama_api_key()
   if cached and not looks_like_placeholder_openai_api_key(cached):
     return cached
