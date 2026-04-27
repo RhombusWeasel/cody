@@ -13,18 +13,30 @@ The following scripts are available in the `scripts/` directory. Run them using 
 
 When using `run_skill`, set the `skill_name` to `file-manipulation` and the `script_name` to the desired script.
 
-### 1. Create a File
+### 1. Write a File
 
-Creates a new file. It will abort if the file already exists to prevent accidental overwrites.
---path and --content arguments must always be wrapped in quotes to ensure they are captured correctly.
+Writes content to a file, creating parent directories as needed. Creates new files and **overwrites** existing ones.
+Content can be provided via `--content` or piped through stdin (useful for multi-line content).
 
 ```json
 {
   "function": "run_skill",
   "arguments": {
     "skill_name": "file-manipulation",
-    "script_name": "create_file.py",
+    "script_name": "write_file.py",
     "args": "--path \"path/to/file.py\" --content \"file content\""
+  }
+}
+```
+
+For multi-line content, pipe via stdin instead:
+```json
+{
+  "function": "run_skill",
+  "arguments": {
+    "skill_name": "file-manipulation",
+    "script_name": "write_file.py",
+    "args": "--path \"path/to/file.py\""
   }
 }
 ```
@@ -46,7 +58,7 @@ Reads a file and outputs the content with line numbers for easy reference.
 
 ### 3. Edit a File
 
-A robust editing script that performs exact string replacement to avoid catting entire files.
+A robust editing script that performs exact string replacement to avoid rewriting entire files for small changes.
 
 ```json
 {
@@ -70,6 +82,59 @@ Searches for specific strings or regex patterns across the workspace.
     "skill_name": "file-manipulation",
     "script_name": "search_code.py",
     "args": "--pattern \"search pattern\""
+  }
+}
+```
+
+### 5. Inspect a File
+
+Provides code-aware structural analysis of source files. Shows a table-of-contents summary
+(functions, classes, etc.) or extracts specific sections by name or line range.
+Supports Python (AST-based) and Lua (regex-based) parsers.
+
+```json
+{
+  "function": "run_skill",
+  "arguments": {
+    "skill_name": "file-manipulation",
+    "script_name": "inspect_file.py",
+    "args": "--path \"path/to/file.py\" --summary"
+  }
+}
+```
+
+Extract a specific function:
+```json
+{
+  "function": "run_skill",
+  "arguments": {
+    "skill_name": "file-manipulation",
+    "script_name": "inspect_file.py",
+    "args": "--path \"path/to/file.py\" --function my_function"
+  }
+}
+```
+
+Extract a line range with context:
+```json
+{
+  "function": "run_skill",
+  "arguments": {
+    "skill_name": "file-manipulation",
+    "script_name": "inspect_file.py",
+    "args": "--path \"path/to/file.py\" --lines 10-45 --context 3"
+  }
+}
+```
+
+List registered parsers:
+```json
+{
+  "function": "run_skill",
+  "arguments": {
+    "skill_name": "file-manipulation",
+    "script_name": "inspect_file.py",
+    "args": "--list-parsers"
   }
 }
 ```

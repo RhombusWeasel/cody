@@ -23,6 +23,8 @@ class Agent():
         self.msg = [
             {'role': 'system', 'content': system_prompt}
         ]
+        # Cumulative token usage for the current chat session
+        self.total_usage = None
 
     def add_msg(self, role: str, msg: str, **kwargs):
         self.msg.append({
@@ -47,8 +49,58 @@ class Agent():
             kwargs = {}
             if resp.message.tool_calls:
                 kwargs['tool_calls'] = resp.message.tool_calls
+            if resp.message.thoughts:
+                kwargs['thoughts'] = resp.message.thoughts
             self.add_msg('assistant', resp.message.content or "", **kwargs)
+        # Accumulate token usage — only track prompt tokens (what we send back to the model)
+        if resp.usage:
+            if self.total_usage is None:
+                from utils.providers.base import TokenUsage
+                self.total_usage = TokenUsage(
+                    context_window=resp.usage.context_window,
+                )
+            self.total_usage.prompt_tokens = resp.usage.prompt_tokens
         return resp
+
+    def get_response_stream(self, msg: str, role: str='user'):
+        """Stream a response, yielding (content_delta, thoughts_delta) tuples.
+        Accumulates the full response in self.msg at the end.
+        """
+        from utils.providers.base import StreamChunk
+        tools = get_tools(['skills', 'system'])
+        if msg != "":
+            self.add_msg(role, msg)
+        _, model, opts = get_provider_config()
+        provider = get_provider()
+
+        full_content = ""
+        full_thoughts = ""
+        chunks = provider.stream_chat(
+            model=model,
+            messages=self.msg,
+            tools=tools if tools else None,
+            options=opts,
+        )
+        for chunk in chunks:
+            full_content += chunk.content
+            if chunk.thoughts:
+                full_thoughts += chunk.thoughts
+            yield chunk.content, chunk.thoughts
+
+            if chunk.done:
+                kwargs = {}
+                if full_content or full_thoughts:
+                    if full_thoughts:
+                        kwargs['thoughts'] = full_thoughts
+                    self.add_msg('assistant', full_content, **kwargs)
+                # Accumulate token usage — only track prompt tokens (what we send back to the model)
+                if chunk.usage:
+                    if self.total_usage is None:
+                        from utils.providers.base import TokenUsage
+                        self.total_usage = TokenUsage(
+                            context_window=chunk.usage.context_window,
+                        )
+                    self.total_usage.prompt_tokens = chunk.usage.prompt_tokens
 
 class TaskAgent():
     """A simple agent workflow that can be passed specific tools to affect application state."""

@@ -101,8 +101,11 @@ class Message(Widget):
         short_hash = self.git_checkpoint[:7] if len(self.git_checkpoint) >= 7 else self.git_checkpoint
         yield ActionButton(f"Revert to here ({short_hash})", action=self.on_revert_pressed, id="revert_btn", variant="warning", classes="action-btn revert-btn")
       pending_loading = False
+      thoughts_content = None
       for block in self.blocks:
         if block['type'] == 'text':
+          if block.get('thoughts'):
+            thoughts_content = block['thoughts']
           if block.get('content'):
             yield from _render_text_block(block['content'])
           if block.get('loading'):
@@ -134,6 +137,12 @@ class Message(Widget):
               md = Markdown(content)
               md.code_indent_guides = False
               yield md
+      # Render thoughts collapsible at the end if present (defaults to open)
+      if thoughts_content:
+        with Collapsible(title="💭 Agent Thoughts", classes="thoughts", collapsed=False):
+          md = Markdown(thoughts_content)
+          md.code_indent_guides = False
+          yield md
       if pending_loading:
         yield LoadingIndicator()
 

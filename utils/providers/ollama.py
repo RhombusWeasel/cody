@@ -2,7 +2,7 @@ import json
 
 from ollama import Client
 from utils.cfg_man import cfg
-from utils.providers.base import ChatResponse, Message, ToolCall as ProviderToolCall
+from utils.providers.base import ChatResponse, Message, StreamChunk, ToolCall as ProviderToolCall, TokenUsage
 from utils.providers.ollama_vault import resolve_ollama_api_key
 
 
@@ -103,9 +103,72 @@ class OllamaProvider:
         )
         for i, tc in enumerate(resp.message.tool_calls)
       ]
+    usage = None
+    prompt_tokens = getattr(resp, "prompt_eval_count", None)
+    completion_tokens = getattr(resp, "eval_count", None)
+    if prompt_tokens is not None or completion_tokens is not None:
+      pt = prompt_tokens or 0
+      ct = completion_tokens or 0
+      context_window = (options or {}).get("num_ctx", 0) or 0
+      usage = TokenUsage(
+        prompt_tokens=pt,
+        completion_tokens=ct,
+        total_tokens=pt + ct,
+        context_window=context_window,
+      )
     return ChatResponse(
       message=Message(
         content=resp.message.content or "",
         tool_calls=tool_calls,
-      )
+      ),
+      usage=usage,
     )
+
+  def stream_chat(
+    self,
+    model: str,
+    messages: list[dict],
+    tools: list | None = None,
+    options: dict | None = None,
+  ) -> list[StreamChunk]:
+    """Stream a chat response, capturing thoughts/reasoning content."""
+    client = self._get_client()
+    kwargs = {
+      "model": model,
+      "messages": _messages_for_ollama_client(messages),
+      "options": options,
+      "stream": True,
+    }
+    if tools:
+      kwargs["tools"] = tools
+
+    chunks: list[StreamChunk] = []
+    for chunk in client.chat(**kwargs):
+      content = chunk.message.content or ""
+      thoughts = None
+
+      # Ollama may include reasoning in the response
+      # Check for 'reasoning' field if present in the chunk
+      if hasattr(chunk.message, "reasoning") and chunk.message.reasoning:
+        thoughts = chunk.message.reasoning
+
+      sc = StreamChunk(
+        content=content,
+        thoughts=thoughts,
+        done=chunk.done if hasattr(chunk, "done") else False,
+      )
+      if chunk.done:
+        prompt_tokens = getattr(chunk, "prompt_eval_count", None)
+        completion_tokens = getattr(chunk, "eval_count", None)
+        if prompt_tokens is not None or completion_tokens is not None:
+          pt = prompt_tokens or 0
+          ct = completion_tokens or 0
+          context_window = (options or {}).get("num_ctx", 0) or 0
+          sc.usage = TokenUsage(
+            prompt_tokens=pt,
+            completion_tokens=ct,
+            total_tokens=pt + ct,
+            context_window=context_window,
+          )
+      chunks.append(sc)
+    return chunks

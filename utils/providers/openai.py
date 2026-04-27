@@ -1,7 +1,7 @@
 import json
 from openai import OpenAI
 from utils.cfg_man import cfg
-from utils.providers.base import ChatResponse, Message, ToolCall
+from utils.providers.base import ChatResponse, Message, StreamChunk, ToolCall, TokenUsage
 from utils.providers.tools import callables_to_openai_tools
 
 
@@ -89,9 +89,75 @@ class OpenAIProvider:
         )
         for tc in msg.tool_calls
       ]
+    usage = None
+    if resp.usage:
+      usage = TokenUsage(
+        prompt_tokens=resp.usage.prompt_tokens or 0,
+        completion_tokens=resp.usage.completion_tokens or 0,
+        total_tokens=resp.usage.total_tokens or 0,
+      )
     return ChatResponse(
       message=Message(
         content=msg.content or "",
         tool_calls=tool_calls,
-      )
+      ),
+      usage=usage,
     )
+
+  def stream_chat(
+    self,
+    model: str,
+    messages: list[dict],
+    tools: list | None = None,
+    options: dict | None = None,
+  ) -> list[StreamChunk]:
+    """Stream a chat response, capturing thoughts/reasoning content."""
+    api_key = _resolve_api_key()
+    client = OpenAI(api_key=api_key) if api_key else OpenAI()
+    opts = options or {}
+    api_messages = _to_openai_messages(messages)
+    kwargs = {
+      "model": model,
+      "messages": api_messages,
+      "temperature": opts.get("temperature", 0.7),
+      "max_tokens": opts.get("max_tokens"),
+      "stream": True,
+      "stream_options": {"include_usage": True},
+    }
+    if tools:
+      kwargs["tools"] = callables_to_openai_tools(tools)
+      kwargs["tool_choice"] = "auto"
+
+    chunks: list[StreamChunk] = []
+    thoughts_buffer = []
+    for stream_chunk in client.chat.completions.create(**{k: v for k, v in kwargs.items() if v is not None}):
+      delta = stream_chunk.choices[0].delta if stream_chunk.choices else None
+      if delta is None:
+        continue
+
+      content = delta.content or ""
+      thoughts = None
+
+      # OpenAI may include reasoning content in the 'reasoning' field
+      if hasattr(delta, "reasoning") and delta.reasoning:
+        thoughts = delta.reasoning
+        thoughts_buffer.append(delta.reasoning)
+
+      sc = StreamChunk(
+        content=content,
+        thoughts=thoughts,
+        done=False,
+      )
+
+      # Check for usage in the final chunk
+      if stream_chunk.usage:
+        u = stream_chunk.usage
+        sc.usage = TokenUsage(
+          prompt_tokens=u.prompt_tokens or 0,
+          completion_tokens=u.completion_tokens or 0,
+          total_tokens=u.total_tokens or 0,
+        )
+        sc.done = True
+
+      chunks.append(sc)
+    return chunks

@@ -80,6 +80,12 @@ Message {
   margin: 1 0;
 }
 
+.usage-bar {
+  height: 1;
+  padding: 0;
+  text-align: center;
+}
+
 Markdown, MarkdownFence, Markdown Label {
   text-align: left;
 }

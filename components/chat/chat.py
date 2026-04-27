@@ -2,7 +2,7 @@ import asyncio
 from textual.reactive import reactive
 from textual.containers import VerticalScroll, Vertical
 from textual.widget import Widget
-from textual.widgets import TabbedContent, TabPane, OptionList
+from textual.widgets import TabbedContent, TabPane, OptionList, Label
 from utils.agent import Agent
 from utils.cfg_man import cfg
 from utils.db import db_manager
@@ -44,8 +44,10 @@ def _group_assistant_tool_messages(msgs: list, show_tool: bool = True) -> list:
       while i < len(msgs):
         m = msgs[i]
         if m.get("role") == "assistant":
-          if m.get("content"):
-            blocks.append({"type": "text", "content": m["content"], "loading": False})
+          block = {"type": "text", "content": m.get("content", ""), "loading": False}
+          if m.get("thoughts"):
+            block["thoughts"] = m["thoughts"]
+          blocks.append(block)
           i += 1
           if not m.get("tool_calls"):
             break
@@ -92,6 +94,7 @@ class MsgBox(Widget):
     with Vertical():
       yield VerticalScroll(id="msg_scroll", classes="chat")
       with Vertical(classes="container"):
+        yield Label(id=f"usage_{self.chat_id}", classes="usage-bar")
         yield MessageInput(self.actor, self.chat_id, classes="msginput")
         yield OptionList(id=f"autocomplete_{self.chat_id}", classes="autocomplete-list")
 
@@ -108,6 +111,28 @@ class MsgBox(Widget):
       git_checkpoint = msg.get("git_checkpoint")
       scroll.mount(Message(role, blocks, git_checkpoint=git_checkpoint))
     scroll.scroll_end()
+    self._update_usage_display()
+
+  def _update_usage_display(self) -> None:
+    """Update the token usage bar at the bottom of the chat."""
+    try:
+      label = self.query_one(f"#usage_{self.chat_id}", Label)
+    except Exception:
+      return
+    usage = getattr(self.actor, 'total_usage', None)
+    if usage and usage.prompt_tokens > 0:
+      pct = usage.context_used_pct
+      if usage.context_window > 0:
+        label.update(
+          f"Context: {usage.prompt_tokens:,} / {usage.context_window:,} ({pct}%)"
+        )
+      else:
+        label.update(
+          f"Prompt tokens: {usage.prompt_tokens:,}"
+        )
+      label.styles.display = "block"
+    else:
+      label.styles.display = "none"
 
   def on_mount(self) -> None:
     self.watch_messages(self.messages)
