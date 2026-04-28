@@ -5,58 +5,22 @@ description: A specialized skill set for Cody with dedicated scripts for reading
 
 # Coding Skill
 
-This skill provides a set of tools to interact with the codebase safely, replacing raw shell commands for file operations.
+This skill provides tools to interact with the codebase safely, replacing raw shell commands for file operations.
 
-## Available Scripts
+## System Tools (no skill activation needed)
 
-The following scripts are available in the `scripts/` directory. Run them using the `run_skill` tool.
+The following file operations are available as **system tools** — call them directly without activating this skill:
 
-When using `run_skill`, set the `skill_name` to `file-manipulation` and the `script_name` to the desired script.
+- **`read_file(path, start_line, end_line)`** — Read a file with optional line range. Shows line numbers.
+- **`write_file(path, content, lines)`** — Write a file. Provide `content` (str) or `lines` (list of strings joined with newlines). Creates parent directories automatically.
 
-### 1. Write a File
+These accept proper typed parameters, so there's no escaping or heredoc hassle.
 
-Writes content to a file, creating parent directories as needed. Creates new files and **overwrites** existing ones.
-Content can be provided via `--content` or piped through stdin (useful for multi-line content).
+## Skill Scripts (activate this skill first)
 
-```json
-{
-  "function": "run_skill",
-  "arguments": {
-    "skill_name": "file-manipulation",
-    "script_name": "write_file.py",
-    "args": "--path \"path/to/file.py\" --content \"file content\""
-  }
-}
-```
+The following scripts are available in the `scripts/` directory. Run them using the `run_skill` tool with `skill_name` set to `file-manipulation`.
 
-For multi-line content, pipe via stdin instead:
-```json
-{
-  "function": "run_skill",
-  "arguments": {
-    "skill_name": "file-manipulation",
-    "script_name": "write_file.py",
-    "args": "--path \"path/to/file.py\""
-  }
-}
-```
-
-### 2. Read a File
-
-Reads a file and outputs the content with line numbers for easy reference.
-
-```json
-{
-  "function": "run_skill",
-  "arguments": {
-    "skill_name": "file-manipulation",
-    "script_name": "read_file.py",
-    "args": "--path \"path/to/file.py\""
-  }
-}
-```
-
-### 3. Edit a File
+### 1. Edit a File
 
 A robust editing script that performs exact string replacement to avoid rewriting entire files for small changes.
 
@@ -71,7 +35,7 @@ A robust editing script that performs exact string replacement to avoid rewritin
 }
 ```
 
-### 4. Search Code
+### 2. Search Code
 
 Searches for specific strings or regex patterns across the workspace.
 
@@ -86,7 +50,7 @@ Searches for specific strings or regex patterns across the workspace.
 }
 ```
 
-### 5. Inspect a File
+### 3. Inspect a File
 
 Provides code-aware structural analysis of source files. Shows a table-of-contents summary
 (functions, classes, etc.) or extracts specific sections by name or line range.

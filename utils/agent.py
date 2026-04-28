@@ -4,25 +4,29 @@ from utils.skills import skill_manager
 from utils.providers import get_provider, get_provider_config
 
 class Agent():
-    def __init__(self):
-        system_prompt = cfg.get("prompts.system", "")
-        wd = cfg.get("session.working_directory", "")
-        if system_prompt:
-            system_prompt = system_prompt.replace("{working_directory}", str(wd))
-            
-        skills_xml = skill_manager.get_catalog_xml()
-        if skills_xml:
-            skills_instructions = (
-                "The following skills provide specialized instructions for specific tasks.\n\n"
-                "When a task matches a skill's description, call the activate_skill tool with the skill's name to load its full instructions.\n\n",
-                "This is the most important task, the skill data is user configured and contains details about what is required of you to use the skills and any standards etc that the user would prefer.  Always activate the skill before calling run_skill.\n\n"
-                "You should always favour skills over general system commands as they provide additional safeguards against errors and are user configured so should conform to any required compliance rules in place."
-            )
-            system_prompt += f"\n\n{skills_instructions}\n\n```xml\n{skills_xml}\n```"
-            
-        self.msg = [
-            {'role': 'system', 'content': system_prompt}
-        ]
+    def __init__(self, system_prompt: str | None = None):
+        if system_prompt is not None:
+            # Custom prompt — use as-is, no config lookup or skills injection
+            self.msg = [{'role': 'system', 'content': system_prompt}]
+        else:
+            system_prompt = cfg.get("prompts.system", "")
+            wd = cfg.get("session.working_directory", "")
+            if system_prompt:
+                system_prompt = system_prompt.replace("{working_directory}", str(wd))
+
+            skills_xml = skill_manager.get_catalog_xml()
+            if skills_xml:
+                skills_instructions = (
+                    "The following skills provide specialized instructions for specific tasks.\n\n"
+                    "When a task matches a skill's description, call the activate_skill tool with the skill's name to load its full instructions.\n\n",
+                    "This is the most important task, the skill data is user configured and contains details about what is required of you to use the skills and any standards etc that the user would prefer.  Always activate the skill before calling run_skill.\n\n"
+                    "You should always favour skills over general system commands as they provide additional safeguards against errors and are user configured so should conform to any required compliance rules in place."
+                )
+                system_prompt += f"\n\n{skills_instructions}\n\n```xml\n{skills_xml}\n```"
+
+            self.msg = [
+                {'role': 'system', 'content': system_prompt}
+            ]
         # Cumulative token usage for the current chat session
         self.total_usage = None
 

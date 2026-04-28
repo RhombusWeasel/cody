@@ -81,11 +81,13 @@ def _messages_to_display(messages: list, show_tool: bool = True) -> list:
 class MsgBox(Widget):
   messages = reactive([])
 
-  def __init__(self, actor, config, chat_id: str, **kwargs):
+  def __init__(self, actor, config, chat_id: str, db_path: str | None = None, **kwargs):
     self.actor = actor
     self.config = config
     self.chat_id = chat_id
+    self.db_path = db_path
     self.chat_title = "New Chat"
+    self._abort_event = asyncio.Event()
     super().__init__(id=f"chat_box-{chat_id}", classes="msgbox", **kwargs)
     show_system = config.get("interface.show_system_messages", False)
     self.messages = actor.msg if show_system else [m for m in actor.msg if m.get("role") != "system"]
@@ -95,7 +97,7 @@ class MsgBox(Widget):
       yield VerticalScroll(id="msg_scroll", classes="chat")
       with Vertical(classes="container"):
         yield Label(id=f"usage_{self.chat_id}", classes="usage-bar")
-        yield MessageInput(self.actor, self.chat_id, classes="msginput")
+        yield MessageInput(self.actor, self.chat_id, db_path=self.db_path, classes="msginput")
         yield OptionList(id=f"autocomplete_{self.chat_id}", classes="autocomplete-list")
 
   def watch_messages(self, messages: list) -> None:
@@ -170,7 +172,7 @@ class MsgBox(Widget):
         {
           "id": placeholder_id,
           "role": "assistant",
-          "content": "Thinking…",
+          "content": "Thinking\u2026",
           "loading": True,
         }
       ]
@@ -223,11 +225,16 @@ class MsgBox(Widget):
     await self.save_chat()
     self._refresh_chat_history()
 
+  def abort_agent_response(self) -> None:
+    """Set the abort flag so get_agent_response stops at the next check point."""
+    self._abort_event.set()
+
   async def get_agent_response(self, user_text: str, placeholder_id: str, git_checkpoint: str | None = None) -> None:
     from utils.tool import execute_tool
     from utils.providers.openai_vault import ensure_openai_api_key_for_tui
     from utils.providers.ollama_vault import ensure_ollama_api_key_for_tui
 
+    self._abort_event.clear()
     len_before = len(self.actor.msg)
 
     if cfg.get("session.provider", "").lower() == "openai":
@@ -247,6 +254,9 @@ class MsgBox(Widget):
     base_messages = [dict(m) for m in self.messages if m.get("id") != placeholder_id]
 
     while True:
+      if self._abort_event.is_set():
+        self.actor.add_msg("assistant", "Cancelled by user.")
+        break
       try:
         resp = await asyncio.to_thread(self.actor.get_response, "")
       except Exception as e:
@@ -278,10 +288,16 @@ class MsgBox(Widget):
           )
           break
         raise
+      if self._abort_event.is_set():
+        self.actor.add_msg("assistant", "Cancelled by user.")
+        break
       if not resp.message.tool_calls:
         break
       self._sync_messages_from_actor(len_before, placeholder_id, base_messages, pending_loading=True)
       for tc in resp.message.tool_calls:
+        if self._abort_event.is_set():
+          self.actor.add_msg("assistant", "Cancelled by user.")
+          break
         args = tc.function.arguments or {}
         if isinstance(args, str):
           args = json.loads(args) if args else {}
@@ -314,6 +330,9 @@ class MsgBox(Widget):
         })
         self.actor.add_msg("tool", tool_data, tool_call_id=getattr(tc, "id", None) or "")
         self._sync_messages_from_actor(len_before, placeholder_id, base_messages, pending_loading=True)
+      if self._abort_event.is_set():
+        self.actor.add_msg("assistant", "Cancelled by user.")
+        break
 
     self._sync_messages_from_actor(len_before, placeholder_id, base_messages, pending_loading=False)
 
@@ -330,15 +349,43 @@ class MsgBox(Widget):
 
   async def save_chat(self) -> None:
     title = getattr(self, "chat_title", "New Chat")
-    await db_manager.save_chat(self.chat_id, title, self.actor.msg)
+    if self.db_path is not None:
+        # Plugin mode: save to a custom database path
+        import json
+        from utils.db_providers import SqliteDbProvider
+        serialized = [dict(m) for m in self.actor.msg]
+        prov = SqliteDbProvider(self.db_path)
+        try:
+            conn = prov.sqlite_connection
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS chats (
+                    id TEXT PRIMARY KEY,
+                    title TEXT,
+                    chat_data TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute(
+                "INSERT INTO chats (id, title, chat_data, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) "
+                "ON CONFLICT(id) DO UPDATE SET title=excluded.title, chat_data=excluded.chat_data, updated_at=CURRENT_TIMESTAMP",
+                (self.chat_id, title, json.dumps(serialized))
+            )
+            conn.commit()
+        finally:
+            prov.close()
+    else:
+        await db_manager.save_chat(self.chat_id, title, self.actor.msg)
 
 
 class ChatTab(TabPane):
-    def __init__(self, config, chat_id=None, chat_data=None, title=None, **kwargs):
+    def __init__(self, config, chat_id=None, chat_data=None, title=None, system_prompt=None, db_path=None, **kwargs):
         self.config = config
         self.chat_id = chat_id or str(uuid.uuid1())
         self.chat_data = chat_data
         self.chat_title = title
+        self.system_prompt = system_prompt
+        self.db_path = db_path
         
         if not self.chat_title:
             self.chat_title = "New Chat"
@@ -351,11 +398,11 @@ class ChatTab(TabPane):
         super().__init__(self.chat_title, id=f"tab-{self.chat_id}", **kwargs)
 
     def compose(self):
-        actor = Agent()
+        actor = Agent(system_prompt=self.system_prompt)
         if self.chat_data:
             actor.msg = self.chat_data
             
-        msg_box = MsgBox(actor, self.config, chat_id=self.chat_id)
+        msg_box = MsgBox(actor, self.config, chat_id=self.chat_id, db_path=self.db_path)
         if self.chat_data and self.chat_title != "New Chat":
             msg_box.chat_title = self.chat_title
             

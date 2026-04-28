@@ -23,9 +23,10 @@ def _location_to_offset(text: str, row: int, col: int) -> int:
 
 
 class MessageInput(TextArea):
-  def __init__(self, actor, id, **kwargs):
+  def __init__(self, actor, id, db_path=None, **kwargs):
     self.box_id = id
     self.actor = actor
+    self.db_path = db_path
     self.input_history = []
     self.history_index = -1
     self.current_input = ""
@@ -65,7 +66,7 @@ class MessageInput(TextArea):
           self.files.append(rel_path)
 
   async def _load_history(self):
-    db_path = db_manager.get_project_db_path()
+    db_path = self.db_path or db_manager.get_project_db_path()
     query = "SELECT user_input FROM input_history ORDER BY id ASC"
     try:
       cols, results = await db_manager.execute(db_path, query)
@@ -189,6 +190,16 @@ class MessageInput(TextArea):
       event.stop()
       self._submit()
       return
+    elif event.key == "escape":
+      event.prevent_default()
+      event.stop()
+      try:
+        from components.chat.chat import MsgBox
+        msg_box = self.screen.query_one(f"#chat_box-{self.box_id}", MsgBox)
+        msg_box.abort_agent_response()
+      except Exception:
+        pass
+      return
 
   def _submit(self) -> None:
     if self._just_autocompleted:
@@ -239,7 +250,7 @@ class MessageInput(TextArea):
         except Exception as e:
           appended_files_text += f"\n\nError reading `{f}`: {e}"
     if user_text not in self.input_history:
-      db_path = db_manager.get_project_db_path()
+      db_path = self.db_path or db_manager.get_project_db_path()
       query = "INSERT INTO input_history (user_input) VALUES (?)"
       self.app.run_worker(db_manager.execute(db_path, query, (user_text,)))
       self.input_history.append(user_text)
