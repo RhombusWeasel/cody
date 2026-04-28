@@ -1,9 +1,42 @@
 import json
+import logging
 
 from ollama import Client
 from utils.cfg_man import cfg
 from utils.providers.base import ChatResponse, Message, StreamChunk, ToolCall as ProviderToolCall, TokenUsage
 from utils.providers.ollama_vault import resolve_ollama_api_key
+
+logger = logging.getLogger(__name__)
+
+
+def _get_model_context_length(model: str, client: Client) -> int | None:
+  """Query Ollama for the model's native context_length and cache it in config.
+
+  Returns the model's context_length in tokens, or None if unavailable.
+  The value is cached at providers.ollama.context_window so we don't
+  need to re-query on every request.
+  """
+  # Check config cache first – avoid hitting the API on every chat turn
+  cached = cfg.get("providers.ollama.context_window")
+  if cached and isinstance(cached, (int, float)) and int(cached) > 0:
+    return int(cached)
+
+  try:
+    info = client.show(model)
+    model_info = info.modelinfo if hasattr(info, "modelinfo") else None
+    if model_info:
+      # Ollama stores context length under various keys depending on model family
+      for key in ("general.context_length", "llama.context_length"):
+        val = model_info.get(key)
+        if val and isinstance(val, (int, float)):
+          context_length = int(val)
+          cfg.set("providers.ollama.context_window", context_length)
+          logger.debug("Ollama model %s context_length=%d (cached)", model, context_length)
+          return context_length
+  except Exception as exc:
+    logger.debug("Could not query Ollama model info for %s: %s", model, exc)
+
+  return None
 
 
 def _tool_call_to_ollama_dict(tc):
@@ -85,6 +118,11 @@ class OllamaProvider:
     options: dict | None = None,
   ) -> ChatResponse:
     client = self._get_client()  # Lazy init here, after vault unlock
+    # Resolve the model's actual context window and inject it as num_ctx
+    context_window = _get_model_context_length(model, client)
+    if context_window:
+      options = dict(options) if options else {}
+      options["num_ctx"] = context_window
     kwargs = {
       "model": model,
       "messages": _messages_for_ollama_client(messages),
@@ -109,12 +147,11 @@ class OllamaProvider:
     if prompt_tokens is not None or completion_tokens is not None:
       pt = prompt_tokens or 0
       ct = completion_tokens or 0
-      context_window = (options or {}).get("num_ctx", 0) or 0
       usage = TokenUsage(
         prompt_tokens=pt,
         completion_tokens=ct,
         total_tokens=pt + ct,
-        context_window=context_window,
+        context_window=context_window or 0,
       )
     return ChatResponse(
       message=Message(
@@ -133,6 +170,11 @@ class OllamaProvider:
   ) -> list[StreamChunk]:
     """Stream a chat response, capturing thoughts/reasoning content."""
     client = self._get_client()
+    # Resolve the model's actual context window and inject it as num_ctx
+    context_window = _get_model_context_length(model, client)
+    if context_window:
+      options = dict(options) if options else {}
+      options["num_ctx"] = context_window
     kwargs = {
       "model": model,
       "messages": _messages_for_ollama_client(messages),
@@ -163,12 +205,11 @@ class OllamaProvider:
         if prompt_tokens is not None or completion_tokens is not None:
           pt = prompt_tokens or 0
           ct = completion_tokens or 0
-          context_window = (options or {}).get("num_ctx", 0) or 0
           sc.usage = TokenUsage(
             prompt_tokens=pt,
             completion_tokens=ct,
             total_tokens=pt + ct,
-            context_window=context_window,
+            context_window=context_window or 0,
           )
       chunks.append(sc)
     return chunks

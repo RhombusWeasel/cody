@@ -12,7 +12,7 @@ This skill provides tools to interact with the codebase safely, replacing raw sh
 The following file operations are available as **system tools** — call them directly without activating this skill:
 
 - **`read_file(path, start_line, end_line)`** — Read a file with optional line range. Shows line numbers.
-- **`write_file(path, content, lines)`** — Write a file. Provide `content` (str) or `lines` (list of strings joined with newlines). Creates parent directories automatically.
+- **`write_file(path, lines)`** — Write a file. Provide `lines` (list of strings joined with newlines). Creates parent directories automatically.
 
 These accept proper typed parameters, so there's no escaping or heredoc hassle.
 

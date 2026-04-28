@@ -16,7 +16,7 @@ def write_file(path: str, lines: list = None):
     Returns:
         A JSON string confirming the write or describing an error.
     """
-    if type(lines) == 'list':
+    if isinstance(lines, list):
         body = "\n".join(lines)
     else:
         return json.dumps({
