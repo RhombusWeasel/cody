@@ -51,15 +51,11 @@ def resolve_ollama_api_key() -> str | None:
   cached = get_cached_ollama_api_key()
   if cached and not looks_like_placeholder_openai_api_key(cached):
     return cached
-  cfg_key = (cfg.get("providers.ollama.api_key") or "").strip()
-  if cfg_key and not looks_like_placeholder_openai_api_key(cfg_key):
-    return cfg_key
+
   vault_key = password_vault.get_secret(OLLAMA_VAULT_CREDENTIAL_ID)
   if vault_key and not looks_like_placeholder_openai_api_key(vault_key):
     return vault_key
-  env_key = (os.getenv("OLLAMA_API_KEY") or "").strip()
-  if env_key:
-    return env_key
+  
   return None
 
 
