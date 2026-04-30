@@ -168,7 +168,7 @@ class OllamaProvider:
     tools: list | None = None,
     options: dict | None = None,
   ) -> list[StreamChunk]:
-    """Stream a chat response, capturing thoughts/reasoning content."""
+    """Stream a chat response, capturing thoughts/reasoning content and tool calls."""
     client = self._get_client()
     # Resolve the model's actual context window and inject it as num_ctx
     context_window = _get_model_context_length(model, client)
@@ -190,13 +190,25 @@ class OllamaProvider:
       thoughts = None
 
       # Ollama may include reasoning in the response
-      # Check for 'reasoning' field if present in the chunk
       if hasattr(chunk.message, "reasoning") and chunk.message.reasoning:
         thoughts = chunk.message.reasoning
+
+      # Capture tool calls on the final chunk
+      tool_calls = None
+      if chunk.done and hasattr(chunk.message, "tool_calls") and chunk.message.tool_calls:
+        tool_calls = [
+          ProviderToolCall(
+            tc.function.name,
+            tc.function.arguments,
+            id=getattr(tc, "id", None) or f"call_{i}",
+          )
+          for i, tc in enumerate(chunk.message.tool_calls)
+        ]
 
       sc = StreamChunk(
         content=content,
         thoughts=thoughts,
+        tool_calls=tool_calls,
         done=chunk.done if hasattr(chunk, "done") else False,
       )
       if chunk.done:

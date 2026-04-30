@@ -111,7 +111,7 @@ class OpenAIProvider:
     tools: list | None = None,
     options: dict | None = None,
   ) -> list[StreamChunk]:
-    """Stream a chat response, capturing thoughts/reasoning content."""
+    """Stream a chat response, capturing thoughts/reasoning content and tool calls."""
     api_key = _resolve_api_key()
     client = OpenAI(api_key=api_key) if api_key else OpenAI()
     opts = options or {}
@@ -130,6 +130,9 @@ class OpenAIProvider:
 
     chunks: list[StreamChunk] = []
     thoughts_buffer = []
+    # Accumulate tool call deltas across chunks
+    tool_call_deltas: dict[int, dict] = {}
+
     for stream_chunk in client.chat.completions.create(**{k: v for k, v in kwargs.items() if v is not None}):
       delta = stream_chunk.choices[0].delta if stream_chunk.choices else None
       if delta is None:
@@ -142,6 +145,24 @@ class OpenAIProvider:
       if hasattr(delta, "reasoning") and delta.reasoning:
         thoughts = delta.reasoning
         thoughts_buffer.append(delta.reasoning)
+
+      # Accumulate tool call deltas
+      if delta.tool_calls:
+        for tc_delta in delta.tool_calls:
+          idx = tc_delta.index
+          if idx not in tool_call_deltas:
+            tool_call_deltas[idx] = {
+              "id": tc_delta.id or "",
+              "function_name": "",
+              "arguments": "",
+            }
+          if tc_delta.id:
+            tool_call_deltas[idx]["id"] = tc_delta.id
+          if tc_delta.function:
+            if tc_delta.function.name:
+              tool_call_deltas[idx]["function_name"] = tc_delta.function.name
+            if tc_delta.function.arguments:
+              tool_call_deltas[idx]["arguments"] += tc_delta.function.arguments
 
       sc = StreamChunk(
         content=content,
@@ -160,4 +181,25 @@ class OpenAIProvider:
         sc.done = True
 
       chunks.append(sc)
+
+    # If we accumulated tool calls, attach them to the final chunk
+    if tool_call_deltas:
+      tool_calls = [
+        ToolCall(
+          tc_data["function_name"],
+          tc_data["arguments"],
+          id=tc_data["id"],
+        )
+        for tc_data in sorted(tool_call_deltas.values(), key=lambda x: list(tool_call_deltas.keys())[list(tool_call_deltas.values()).index(x)])
+      ]
+      # Attach to the last chunk (or the last non-usage chunk)
+      for sc in reversed(chunks):
+        if sc.content or sc.thoughts:
+          sc.tool_calls = tool_calls
+          break
+      else:
+        # Fallback: attach to the very last chunk
+        if chunks:
+          chunks[-1].tool_calls = tool_calls
+
     return chunks

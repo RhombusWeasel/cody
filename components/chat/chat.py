@@ -116,7 +116,6 @@ class MsgBox(Widget):
     self._update_usage_display()
 
   def _update_usage_display(self) -> None:
-    """Update the token usage bar at the bottom of the chat."""
     try:
       label = self.query_one(f"#usage_{self.chat_id}", Label)
     except Exception:
@@ -401,8 +400,15 @@ class ChatTab(TabPane):
         actor = Agent(system_prompt=self.system_prompt)
         if self.chat_data:
             actor.msg = self.chat_data
-            
-        msg_box = MsgBox(actor, self.config, chat_id=self.chat_id, db_path=self.db_path)
+        
+        # Use streaming chat if enabled in config
+        use_streaming = self.config.get("interface.streaming", True)
+        if use_streaming:
+            from components.chat.streaming_chat import StreamingMsgBox
+            msg_box = StreamingMsgBox(actor, self.config, chat_id=self.chat_id, db_path=self.db_path)
+        else:
+            msg_box = MsgBox(actor, self.config, chat_id=self.chat_id, db_path=self.db_path)
+        
         if self.chat_data and self.chat_title != "New Chat":
             msg_box.chat_title = self.chat_title
             

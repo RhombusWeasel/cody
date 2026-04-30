@@ -7,6 +7,7 @@ register_default_config({
     "show_system_messages": True,
     "show_tool_messages": True,
     "leader_key": "ctrl+space",
-    "theme": "h4x0я",
+    "theme": "h4x0\u044f",
+    "streaming": True,  # Use streaming chat (live token-by-token output)
   },
 })

@@ -30,6 +30,28 @@ Message {
   width: 100%;
 }
 
+StreamingMsgBox > Vertical {
+  height: 1fr;
+  min-height: 0;
+}
+
+.chat {
+  height: 1fr;
+  min-height: 0;
+}
+
+StreamingMsgBox .container {
+  height: auto;
+  min-height: 3;
+}
+
+StreamingMessage {
+  padding: 0;
+  margin: 0;
+  height: auto;
+  width: 100%;
+}
+
 .container {
   width: 99%;
 }

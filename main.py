@@ -120,7 +120,11 @@ class TuiApp(App):
   async def cleanup(self):
     try:
       workspace = self.query_one(Workspace)
+      from components.chat.chat import MsgBox
+      from components.chat.streaming_chat import StreamingMsgBox
       for msg_box in workspace.query(MsgBox):
+        await msg_box.save_chat()
+      for msg_box in workspace.query(StreamingMsgBox):
         await msg_box.save_chat()
     except Exception:
       pass
@@ -259,7 +263,12 @@ class TuiApp(App):
                 # Not a chat tab, maybe create one?
                 return
                 
-            chat_box = active_tab.query_one(MsgBox)
+            from components.chat.chat import MsgBox
+            from components.chat.streaming_chat import StreamingMsgBox
+            try:
+                chat_box = active_tab.query_one(MsgBox)
+            except Exception:
+                chat_box = active_tab.query_one(StreamingMsgBox)
             
             msgs = [*chat_box.messages, {"role": "user", "content": msg_content}]
             placeholder_id = f"pending_{len(msgs)}"

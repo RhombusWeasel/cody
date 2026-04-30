@@ -18,7 +18,7 @@ class Agent():
             if skills_xml:
                 skills_instructions = (
                     "The following skills provide specialized instructions for specific tasks.\n\n"
-                    "When a task matches a skill's description, call the activate_skill tool with the skill's name to load its full instructions.\n\n",
+                    "When a task matches a skill's description, call the activate_skill tool with the skill's name to load its full instructions.\n\n"
                     "This is the most important task, the skill data is user configured and contains details about what is required of you to use the skills and any standards etc that the user would prefer.  Always activate the skill before calling run_skill.\n\n"
                     "You should always favour skills over general system commands as they provide additional safeguards against errors and are user configured so should conform to any required compliance rules in place."
                 )
@@ -67,44 +67,83 @@ class Agent():
         return resp
 
     def get_response_stream(self, msg: str, role: str='user'):
-        """Stream a response, yielding (content_delta, thoughts_delta) tuples.
+        """Stream a response, yielding StreamChunk objects.
+        Handles the full tool-call loop internally — when the model requests
+        tool calls, they are executed and the next response is streamed.
         Accumulates the full response in self.msg at the end.
         """
         from utils.providers.base import StreamChunk
+        from utils.tool import execute_tool
+        import json
+
         tools = get_tools(['skills', 'system'])
         if msg != "":
             self.add_msg(role, msg)
-        _, model, opts = get_provider_config()
-        provider = get_provider()
 
-        full_content = ""
-        full_thoughts = ""
-        chunks = provider.stream_chat(
-            model=model,
-            messages=self.msg,
-            tools=tools if tools else None,
-            options=opts,
-        )
-        for chunk in chunks:
-            full_content += chunk.content
-            if chunk.thoughts:
-                full_thoughts += chunk.thoughts
-            yield chunk.content, chunk.thoughts
+        while True:
+            _, model, opts = get_provider_config()
+            provider = get_provider()
 
-            if chunk.done:
-                kwargs = {}
-                if full_content or full_thoughts:
+            full_content = ""
+            full_thoughts = ""
+            tool_calls = None
+
+            chunks = provider.stream_chat(
+                model=model,
+                messages=self.msg,
+                tools=tools if tools else None,
+                options=opts,
+            )
+            for chunk in chunks:
+                full_content += chunk.content
+                if chunk.thoughts:
+                    full_thoughts += chunk.thoughts
+                if chunk.tool_calls:
+                    tool_calls = chunk.tool_calls
+                yield chunk
+
+                if chunk.done:
+                    # Accumulate token usage
+                    if chunk.usage:
+                        if self.total_usage is None:
+                            from utils.providers.base import TokenUsage
+                            self.total_usage = TokenUsage(
+                                context_window=chunk.usage.context_window,
+                            )
+                        self.total_usage.prompt_tokens = chunk.usage.prompt_tokens
+
+                    # Add the assistant message to history
+                    kwargs = {}
                     if full_thoughts:
                         kwargs['thoughts'] = full_thoughts
+                    if tool_calls:
+                        kwargs['tool_calls'] = tool_calls
                     self.add_msg('assistant', full_content, **kwargs)
-                # Accumulate token usage — only track prompt tokens (what we send back to the model)
-                if chunk.usage:
-                    if self.total_usage is None:
-                        from utils.providers.base import TokenUsage
-                        self.total_usage = TokenUsage(
-                            context_window=chunk.usage.context_window,
-                        )
-                    self.total_usage.prompt_tokens = chunk.usage.prompt_tokens
+
+            # If no tool calls, we're done
+            if not tool_calls:
+                break
+
+            # Execute tool calls and add results
+            for tc in tool_calls:
+                args = tc.function.arguments or {}
+                if isinstance(args, str):
+                    args = json.loads(args) if args else {}
+                result = execute_tool(tc.function.name, args)
+                if not isinstance(result, str):
+                    result = json.dumps(result)
+                tool_data = json.dumps({
+                    'function': tc.function.name,
+                    'arguments': args,
+                    'result': result,
+                })
+                self.add_msg('tool', tool_data, tool_call_id=getattr(tc, 'id', None) or "")
+
+            # Reset for next iteration of the loop
+            full_content = ""
+            full_thoughts = ""
+            tool_calls = None
+
 
 class TaskAgent():
     """A simple agent workflow that can be passed specific tools to affect application state."""
@@ -167,6 +206,7 @@ class TaskAgent():
                     'result': result
                 })
                 self.add_msg('tool', tool_data)
+
 
 register_default_config({
   "prompts": {

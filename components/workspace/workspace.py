@@ -354,8 +354,9 @@ class Workspace(Widget):
             self.set_active_pane(panes[-1])
 
     def get_active_msg_box(self):
-        """Return MsgBox for the active pane's active chat tab, or None."""
+        """Return MsgBox or StreamingMsgBox for the active pane's active chat tab, or None."""
         from components.chat.chat import MsgBox
+        from components.chat.streaming_chat import StreamingMsgBox
 
         if not self.active_pane:
             return None
@@ -364,7 +365,10 @@ class Workspace(Widget):
             return None
         try:
             tab = self.active_pane.tabs.query_one(f"#{active_tab_id}", TabPane)
-            return tab.query_one(MsgBox)
+            try:
+                return tab.query_one(MsgBox)
+            except Exception:
+                return tab.query_one(StreamingMsgBox)
         except Exception:
             return None
 

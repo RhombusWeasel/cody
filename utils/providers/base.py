@@ -45,6 +45,7 @@ class StreamChunk:
   """A single chunk from a streaming response."""
   content: str = ""
   thoughts: str | None = None  # reasoning/thinking delta for this chunk
+  tool_calls: list[ToolCall] | None = None  # tool calls (typically on final/done chunk)
   done: bool = False
   usage: TokenUsage | None = None
 

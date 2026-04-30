@@ -194,9 +194,15 @@ class MessageInput(TextArea):
       event.prevent_default()
       event.stop()
       try:
+        # Try both MsgBox and StreamingMsgBox
         from components.chat.chat import MsgBox
-        msg_box = self.screen.query_one(f"#chat_box-{self.box_id}", MsgBox)
-        msg_box.abort_agent_response()
+        try:
+          msg_box = self.screen.query_one(f"#chat_box-{self.box_id}", MsgBox)
+          msg_box.abort_agent_response()
+        except Exception:
+          from components.chat.streaming_chat import StreamingMsgBox
+          msg_box = self.screen.query_one(f"#chat_box-{self.box_id}", StreamingMsgBox)
+          msg_box.abort_agent_response()
       except Exception:
         pass
       return
@@ -272,7 +278,7 @@ class MessageInput(TextArea):
     msgs.append({
       "id": placeholder_id,
       "role": "assistant",
-      "content": "Thinking…",
+      "content": "Thinking\u2026",
       "loading": True,
     })
     box.messages = msgs
